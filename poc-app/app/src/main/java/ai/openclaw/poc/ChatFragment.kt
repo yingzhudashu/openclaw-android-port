@@ -624,7 +624,7 @@ class ChatFragment : Fragment() {
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.connectTimeout = 60000; conn.readTimeout = 180000; conn.doOutput = true
+        conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true // 10 min for multi-step agent
         val body = JSONObject().apply {
             put("message", message)
             if (sid.isNotEmpty()) put("session_id", sid)
@@ -645,7 +645,7 @@ class ChatFragment : Fragment() {
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.connectTimeout = 60000; conn.readTimeout = 180000; conn.doOutput = true
+        conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true // 10 min for multi-step agent
         val body = JSONObject().apply {
             put("message", getString(R.string.chat_analyze_image_prompt))
             put("image_base64", base64)

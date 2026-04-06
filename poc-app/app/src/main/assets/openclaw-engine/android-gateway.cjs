@@ -3078,6 +3078,11 @@ route('POST', '/api/agent/chat', async (req, res) => {
 
   const model = body.model || sess.model || config.model;
 
+  // Keep-alive: send space every 15s to prevent client/proxy timeout during long agent runs
+  const keepAlive = setInterval(() => {
+    try { if (!res.writableEnded) res.write(' '); } catch (_) {}
+  }, 15000);
+
   try {
     const result = await agentChat({
       model,
@@ -3086,6 +3091,8 @@ route('POST', '/api/agent/chat', async (req, res) => {
       temperature: body.temperature,
       max_tokens: body.max_tokens,
     });
+
+    clearInterval(keepAlive);
 
     if (result.error) {
       return sendJSON(res, 502, { error: result.error, message: result.message, detail: result.detail, session_id: sessionId });
@@ -3104,6 +3111,7 @@ route('POST', '/api/agent/chat', async (req, res) => {
       tool_log: result.tool_log,
     });
   } catch (e) {
+    clearInterval(keepAlive);
     logger.error('Agent', `Agent chat error: ${e.message}`);
     sendError(res, 500, 'agent_error', e.message);
   }

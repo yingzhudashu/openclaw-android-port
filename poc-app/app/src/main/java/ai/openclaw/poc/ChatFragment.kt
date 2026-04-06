@@ -636,7 +636,12 @@ class ChatFragment : Fragment() {
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
         conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $resp")
+        if (code !in 200..299) {
+            if (resp.trimStart().startsWith("<")) {
+                throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
+            }
+            throw Exception("HTTP $code: $resp")
+        }
         return JSONObject(resp)
     }
 
@@ -658,7 +663,12 @@ class ChatFragment : Fragment() {
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
         conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $resp")
+        if (code !in 200..299) {
+            if (resp.trimStart().startsWith("<")) {
+                throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
+            }
+            throw Exception("HTTP $code: $resp")
+        }
         return JSONObject(resp)
     }
 

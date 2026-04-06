@@ -236,23 +236,52 @@ class ChatFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
-                    if (pendingFileName != null && pendingFileContent != null) {
-                        val msg = getString(R.string.chat_analyze_file_prompt, pendingFileName ?: "", pendingFileContent ?: "", text)
-                        pendingFileName = null; pendingFileContent = null
+                if (pendingFileName != null && pendingFileContent != null) {
+                    val msg = getString(R.string.chat_analyze_file_prompt, pendingFileName ?: "", pendingFileContent ?: "", text)
+                    val result = withContext(Dispatchers.IO) {
                         postChat(msg, requestSessionId)
-                    } else {
-                        postChat(text, requestSessionId)
+                    }
+                    if (sessionId != requestSessionId) return@launch
+                    val response = result.optString("content", getString(R.string.chat_no_reply_text))
+                    val toolLog = result.optJSONArray("tool_log")
+                    val steps = result.optInt("steps", 0)
+                    val model = result.optString("model", currentModel)
+                    messageAdapter.updateLastAiMessageFull(response, toolLog?.toString(), steps)
+                    scrollToBottom()
+                    if (model.isNotEmpty() && model != currentModel) currentModel = model
+                    pendingFileName = null
+                    pendingFileContent = null
+                } else {
+                    withContext(Dispatchers.IO) {
+                        streamChat(
+                            message = text,
+                            sid = requestSessionId,
+                            onChunk = { content ->
+                                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                    if (sessionId == requestSessionId) {
+                                        messageAdapter.updateLastAiMessage(content)
+                                        scrollToBottom()
+                                    }
+                                }
+                            },
+                            onDone = { respSessionId, model, reasoning ->
+                                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                    if (sessionId == requestSessionId && model.isNotEmpty()) {
+                                        currentModel = model
+                                    }
+                                }
+                            },
+                            onError = { e ->
+                                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                    if (sessionId == requestSessionId) {
+                                        messageAdapter.updateLastAiMessage("❌ ${e.message ?: getString(R.string.chat_unknown_error)}")
+                                        scrollToBottom()
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
-                if (sessionId != requestSessionId) return@launch
-                val response = result.optString("content", getString(R.string.chat_no_reply_text))
-                val toolLog = result.optJSONArray("tool_log")
-                val steps = result.optInt("steps", 0)
-                val model = result.optString("model", currentModel)
-                messageAdapter.updateLastAiMessageFull(response, toolLog?.toString(), steps)
-                scrollToBottom()
-                if (model.isNotEmpty() && model != currentModel) currentModel = model
             } catch (e: Exception) {
                 if (sessionId == requestSessionId) {
                     messageAdapter.updateLastAiMessage("❌ ${e.message ?: getString(R.string.chat_unknown_error)}")
@@ -629,7 +658,7 @@ class ChatFragment : Fragment() {
             put("message", message)
             if (sid.isNotEmpty()) put("session_id", sid)
             if (currentModel.isNotEmpty()) put("model", currentModel)
-                            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
+            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
         }
         OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
         val code = conn.responseCode
@@ -645,6 +674,121 @@ class ChatFragment : Fragment() {
         return JSONObject(resp)
     }
 
+    private fun streamChat(
+        message: String,
+        sid: String,
+        onChunk: (String) -> Unit,
+        onDone: (sessionId: String, model: String, reasoning: String) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        val url = URL("$BASE_URL/api/chat")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+        conn.setRequestProperty("Accept", "text/event-stream")
+        conn.connectTimeout = 30000; conn.readTimeout = 300000; conn.doOutput = true
+        val body = JSONObject().apply {
+            put("message", message)
+            if (sid.isNotEmpty()) put("session_id", sid)
+            if (currentModel.isNotEmpty()) put("model", currentModel)
+            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
+            put("stream", true)
+        }
+        OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
+        
+        try {
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
+                conn.disconnect()
+                if (resp.trimStart().startsWith("<")) {
+                    throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
+                }
+                throw Exception("HTTP $code: $resp")
+            }
+            
+            val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+            val accumulated = StringBuilder()
+            var receivedCount = 0
+            var lastScrollTime = System.currentTimeMillis()
+            var currentSessionId = sid
+            var currentModel = ""
+            var currentReasoning = ""
+            
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                val trimmed = line?.trim() ?: continue
+                
+                if (trimmed.isEmpty()) continue
+                
+                if (trimmed == "data: [DONE]") {
+                    break
+                }
+                
+                if (trimmed.startsWith("data: ")) {
+                    val data = trimmed.substringAfter("data: ").trim()
+                    
+                    try {
+                        val json = JSONObject(data)
+                        
+                        if (json.has("session_id")) {
+                            currentSessionId = json.optString("session_id", currentSessionId)
+                        }
+                        if (json.has("model")) {
+                            currentModel = json.optString("model", currentModel)
+                        }
+                        if (json.has("reasoning")) {
+                            currentReasoning = json.optString("reasoning", currentReasoning)
+                        }
+                        
+                        if (json.has("choices")) {
+                            val choices = json.getJSONArray("choices")
+                            if (choices.length() > 0) {
+                                val firstChoice = choices.getJSONObject(0)
+                                if (firstChoice.has("delta")) {
+                                    val delta = firstChoice.getJSONObject("delta")
+                                    if (delta.has("content")) {
+                                        val content = delta.optString("content")
+                                        if (content.isNotEmpty()) {
+                                            accumulated.append(content)
+                                            receivedCount++
+                                            
+                                            val now = System.currentTimeMillis()
+                                            if (receivedCount % 5 == 0 || now - lastScrollTime >= 200) {
+                                                onChunk(accumulated.toString())
+                                                lastScrollTime = now
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (json.has("content")) {
+                            val content = json.optString("content", "")
+                            if (content.isNotEmpty()) {
+                                accumulated.append(content)
+                                receivedCount++
+                                
+                                val now = System.currentTimeMillis()
+                                if (receivedCount % 5 == 0 || now - lastScrollTime >= 200) {
+                                    onChunk(accumulated.toString())
+                                    lastScrollTime = now
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+            
+            onChunk(accumulated.toString())
+            onDone(currentSessionId, currentModel, currentReasoning)
+            conn.disconnect()
+        } catch (e: Exception) {
+            onError(e)
+        }
+    }
+
     private fun postImage(base64: String, sid: String): JSONObject {
         val url = URL("$BASE_URL/api/agent/chat")
         val conn = url.openConnection() as HttpURLConnection
@@ -656,7 +800,7 @@ class ChatFragment : Fragment() {
             put("image_base64", base64)
             if (sid.isNotEmpty()) put("session_id", sid)
             if (currentModel.isNotEmpty()) put("model", currentModel)
-                            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
+            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
         }
         OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
         val code = conn.responseCode

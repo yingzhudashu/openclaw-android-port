@@ -1,0 +1,42 @@
+# Build outputs
+poc-app/app/build/
+poc-app/build/
+poc-app/.gradle/
+poc-app/app/.cxx/
+
+# IDE
+.idea/
+*.iml
+local.properties
+
+# Gradle wrapper jar (keep wrapper properties)
+poc-app/gradle/wrapper/gradle-wrapper.jar
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Never commit config with API keys
+poc-app/app/src/main/assets/openclaw-engine/config.json
+
+# APK outputs
+*.apk
+
+# Development intermediate directories (not part of the app)
+dist/
+node_modules/
+package/
+android-data/
+data/
+engine/
+scripts/
+app-shell/
+native-libs/
+
+# Node headers (bundled with libnode.so, not needed in repo)
+poc-app/app/src/main/jniLibs/arm64-v8a/include/
+
+# Root-level dev artifacts
+nodejs-mobile-react-native-*.tgz
+package-lock.json
+package.json

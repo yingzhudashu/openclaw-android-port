@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "model": "qwen3.5-plus",
+  "providers": {
+    "bailian": {
+      "api_key": "",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "models": [
+        "qwen3.5-plus",
+        "qwen-plus",
+        "qwen-turbo",
+        "qwen-max",
+        "qwen-long"
+      ]
+    },
+    "anthropic": {
+      "api_key": "",
+      "base_url": "https://api.anthropic.com/v1",
+      "models": [
+        "claude-sonnet-4-6",
+        "claude-3-5-haiku-20241022"
+      ]
+    },
+    "deepseek": {
+      "api_key": "",
+      "base_url": "https://api.deepseek.com/v1",
+      "models": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ]
+    },
+    "openai": {
+      "api_key": "",
+      "base_url": "https://api.openai.com/v1",
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini"
+      ]
+    },
+    "siliconflow": {
+      "api_key": "",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "models": [
+        "deepseek-ai/DeepSeek-V3",
+        "Qwen/Qwen2.5-72B-Instruct",
+        "BAAI/bge-m3"
+      ]
+    }
+  },
+  "system_prompt": "你是 OpenClaw 🦞，一个运行在 Android 手机上的 AI 个人助手。\n\n## 核心特质\n- 聪明高效，简洁直接\n- 中文优先回复，技术术语保留英文\n- 能帮忙做的事直接做，不反复确认\n- 有自己的观点，不是搜索引擎\n\n## 能力\n- 日常问答、知识查询、文本创作\n- 代码编写与调试\n- 翻译、总结、分析\n- 数学计算与逻辑推理\n\n## 风格\n- 简洁但不敷衍，详细但不啰嗦\n- 适当使用 emoji，但克制\n- 重要信息用加粗标注\n- 回复格式适合手机阅读（短段落）",
+  "gateway": {
+    "port": 18789,
+    "bind": "127.0.0.1"
+  },
+  "max_agent_steps": 25,
+  "memory_mode": "basic",
+  "embedding": {
+    "provider": "",
+    "model": "",
+    "api_key": "",
+    "base_url": ""
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "system_prompt":  "You are a helpful AI assistant.",
+    "providers":  {
+                      "bailian":  {
+                                      "base_url":  "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                                      "api_key":  "",
+                                      "models":  [
+                                                     "qwen-plus",
+                                                     "qwen-turbo"
+                                                 ]
+                                  }
+                  },
+    "model":  "qwen-plus",
+    "version":  "2026.4.1-android",
+    "gateway":  {
+                    "bind":  "127.0.0.1",
+                    "port":  19999
+                }
+}

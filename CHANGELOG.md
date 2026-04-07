@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-04-07
+
+### Added
+- **🤖 Agent Templates** — New session picker with preset roles: Code, Research, Translator, Writer
+- **Sub-agent Simulation** — Each template creates a session with its own system_prompt
+- **Custom Welcome** — Agent-specific welcome messages
+
+### Improved
+- Session creation now supports system_prompt passthrough to Gateway
+- Gap analysis: Subagent gap partially closed via multi-session simulation
+
 ## [1.5.0] - 2026-04-07
 
 ### Added

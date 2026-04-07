@@ -337,4 +337,6 @@
     <string name="cron_notification_desc">Results from scheduled AI tasks</string>
     <string name="heartbeat_enabled">Heartbeat enabled</string>
     <string name="heartbeat_disabled">Heartbeat disabled</string>
+    <string name="agent_pick_title">New Session</string>
+    <string name="agent_welcome">🤖 %s ready. How can I help?</string>
 </resources>

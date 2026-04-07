@@ -23,14 +23,14 @@
 ## 待对齐 ❌
 | 功能 | Desktop | Android | 优先级 | 难度 |
 |------|---------|---------|--------|------|
-| **定时任务 (Cron)** | ✅ openclaw cron | ❌ 无 | 🔴 高 | 中 |
-| **子代理 (Subagent)** | ✅ sessions_spawn | ❌ 无 | 🔴 高 | 高 |
-| **Skills 执行** | ✅ skill install/run | ⚠️ 仅列表展示 | 🔴 高 | 高 |
-| **工具调用 (Tools)** | ✅ web_fetch/exec/browser | ❌ 仅显示调用日志 | 🟡 中 | 高 |
-| **通知推送** | ✅ 频道消息 | ❌ 无 | 🟡 中 | 中 |
-| **Heartbeat 心跳** | ✅ HEARTBEAT.md 轮询 | ❌ 无 | 🟡 中 | 中 |
+| **定时任务 (Cron)** | ✅ openclaw cron | ✅ v1.4.0 WorkManager | ✅ 已关闭 | - |
+| **子代理 (Subagent)** | ✅ sessions_spawn | ⚠️ 多会话模拟 | 🟡 中 | 高 |
+| **Skills 执行** | ✅ skill install/run | ✅ 列表+详情+安装+删除 | ✅ 已关闭 | - |
+| **工具调用 (Tools)** | ✅ web_fetch/exec/browser | ⚠️ 仅显示调用日志 | 🟡 中 | 高 |
+| **通知推送** | ✅ 频道消息 | ✅ v1.4.0 NotificationChannel | ✅ 已关闭 | - |
+| **Heartbeat 心跳** | ✅ HEARTBEAT.md 轮询 | ✅ v1.5.0 WorkManager | ✅ 已关闭 | - |
 | **多频道 (Channel)** | ✅ Telegram/Discord/飞书等 | ❌ 仅本地 | 🟡 中 | 高 |
-| **Memory 搜索** | ✅ memory_search | ❌ 仅编辑 | 🟡 中 | 中 |
+| **Memory 搜索** | ✅ memory_search | ✅ v1.5.0 API | ✅ 已关闭 | - |
 | **ACP 编码代理** | ✅ Cursor/Codex | ❌ 无 | 🔵 低 | 高 |
 | **Browser 控制** | ✅ headless browser | ❌ 无 | 🔵 低 | 高 |
 

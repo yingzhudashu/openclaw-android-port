@@ -156,7 +156,7 @@ class ChatFragment : Fragment() {
         }
 
         btnSessionList.setOnClickListener { showSessionList() }
-        btnNewSession.setOnClickListener { startNewSession() }
+        btnNewSession.setOnClickListener { showNewSessionPicker() }
         btnAttach.setOnClickListener { showAttachOptions() }
 
         // Network status banner
@@ -267,7 +267,7 @@ class ChatFragment : Fragment() {
 
     // ─── Session Management ──────────────────────────────────────────────────
 
-    private fun createNewSession() {
+    private fun createNewSession(agentName: String? = null, systemPrompt: String? = null) {
         viewLifecycleOwner.lifecycleScope.launch {
             // 引擎可能还没启动，最多重试 3 次（间隔 2s）
             var retries = 3
@@ -280,9 +280,10 @@ class ChatFragment : Fragment() {
                         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                         conn.connectTimeout = 5000; conn.readTimeout = 5000; conn.doOutput = true
                         val body = JSONObject().apply {
-                            put("title", getString(R.string.chat_new_session))
+                            put("title", agentName ?: getString(R.string.chat_new_session))
                             if (currentModel.isNotEmpty()) put("model", currentModel)
                             if (currentProvider.isNotEmpty()) put("provider", currentProvider)
+                            if (!systemPrompt.isNullOrEmpty()) put("system_prompt", systemPrompt)
                         }
                         OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
                         val code = conn.responseCode
@@ -324,7 +325,33 @@ class ChatFragment : Fragment() {
         }
     }
 
-    private fun startNewSession() {
+    // Agent templates for sub-agent simulation
+    private data class AgentTemplate(val name: String, val emoji: String, val systemPrompt: String)
+    private val agentTemplates = listOf(
+        AgentTemplate("普通会话", "💬", ""),
+        AgentTemplate("代码助手", "💻", "你是一个专业的编程助手\u3002\u4f60擅长 Kotlin/Java/Python/JavaScript/TypeScript\u3002\u7528代码说话\uff0c简洁高效\u3002代码块标注语言\u3002"),
+        AgentTemplate("研究助手", "🔍", "你是一个研究分析助手\u3002\u4f60擅长深度搜索\u3001资料整理\u3001报告撰写\u3002\u6bcf次回答都给出信息来源\u3002"),
+        AgentTemplate("翻译官", "🌐", "你是一个专业翻译\u3002\u652f持中英日韩互译\u3002\u7ffb译自然流畅\uff0c保留专业术语\u3002\u4e0d加额外解释\uff0c直接给译文\u3002"),
+        AgentTemplate("写作助手", "✍️", "你是一个写作助手\u3002\u64c5长各种文体\uff1a博客\u3001报告\u3001邮件\u3001文案\u3002\u98ce格灵活\uff0c可正式可轻松\u3002")
+    )
+
+    private fun showNewSessionPicker() {
+        val items = agentTemplates.map { "${it.emoji} ${it.name}" }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.agent_pick_title)
+            .setItems(items) { _, which ->
+                val template = agentTemplates[which]
+                if (template.systemPrompt.isEmpty()) {
+                    startNewSession()
+                } else {
+                    startNewSession(template.name, template.systemPrompt)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun startNewSession(agentName: String? = null, systemPrompt: String? = null) {
         // Save current draft before starting new session
         if (sessionId.isNotEmpty()) {
             val draft = etMessage.text.toString()
@@ -332,12 +359,13 @@ class ChatFragment : Fragment() {
                 .putString("draft_$sessionId", draft).apply()
         }
         messageAdapter.clearMessages()
-        messageAdapter.addMessage(ChatMessage(content = getString(R.string.chat_welcome), isUser = false, model = "", sessionId = sessionId))
-        currentSessionTitle = getString(R.string.chat_new_session)
+        val welcomeMsg = if (agentName != null) getString(R.string.agent_welcome, agentName) else getString(R.string.chat_welcome)
+        messageAdapter.addMessage(ChatMessage(content = welcomeMsg, isUser = false, model = "", sessionId = sessionId))
+        currentSessionTitle = agentName ?: getString(R.string.chat_new_session)
         // Refresh default model+provider from gateway before creating session
         viewLifecycleOwner.lifecycleScope.launch {
             fetchModelInfoSync()
-            createNewSession()
+            createNewSession(agentName, systemPrompt)
         }
         Snackbar.make(requireView(), getString(R.string.chat_new_session_snack), Snackbar.LENGTH_SHORT).show()
     }

@@ -594,12 +594,14 @@ class ChatFragment : Fragment() {
             .setItems(arrayOf(
                 getString(R.string.chat_edit_title),
                 getString(R.string.chat_delete),
-                getString(R.string.chat_clear_context)
+                getString(R.string.chat_clear_context),
+                getString(R.string.chat_export)
             )) { _, which ->
                 when (which) {
                     0 -> showRenameSessionDialog(session, onDone)
                     1 -> showDeleteSessionConfirm(session, onDone)
                     2 -> showClearContextConfirm(session)
+                    3 -> exportSession(session)
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -633,6 +635,35 @@ class ChatFragment : Fragment() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun exportSession(session: Session) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val sb = StringBuilder()
+                sb.appendLine("# ${session.title}")
+                sb.appendLine("*Exported on ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(java.util.Date())}*")
+                sb.appendLine()
+                for (msg in messageAdapter.getAllMessages()) {
+                    if (msg.isUser) {
+                        sb.appendLine("## 👤 User")
+                    } else {
+                        sb.appendLine("## 🤖 AI")
+                    }
+                    sb.appendLine(msg.content)
+                    sb.appendLine()
+                }
+                val fileName = "${session.title.replace(Regex("[^\\w\\u4e00-\\u9fff]"), "_")}.md"
+                val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOWNLOADS), "OpenClaw")
+                dir.mkdirs()
+                val file = java.io.File(dir, fileName)
+                file.writeText(sb.toString())
+                Toast.makeText(context, getString(R.string.chat_exported, file.absolutePath), Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showClearContextConfirm(session: Session) {

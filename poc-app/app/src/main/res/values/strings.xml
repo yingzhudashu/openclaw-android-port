@@ -317,4 +317,6 @@
     <string name="search_messages">搜索消息</string>
     <string name="search_hint">搜索聊天记录…</string>
     <string name="search_close">关闭搜索</string>
+    <string name="chat_export">导出对话</string>
+    <string name="chat_exported">已导出到 %s</string>
 </resources>

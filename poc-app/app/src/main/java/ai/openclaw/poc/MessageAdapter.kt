@@ -133,6 +133,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     }
 
     fun getMessageCount(): Int = messages.size
+    fun getAllMessages(): List<ChatMessage> = messages.toList()
 
     fun getMessageAt(position: Int): ChatMessage? {
         return messages.getOrNull(position)

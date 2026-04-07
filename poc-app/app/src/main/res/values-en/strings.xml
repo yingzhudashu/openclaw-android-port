@@ -317,4 +317,6 @@
     <string name="search_messages">Search messages</string>
     <string name="search_hint">Search chat history…</string>
     <string name="search_close">Close search</string>
+    <string name="chat_export">Export Chat</string>
+    <string name="chat_exported">Exported to %s</string>
 </resources>

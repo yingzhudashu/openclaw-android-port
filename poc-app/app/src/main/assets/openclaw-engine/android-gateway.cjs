@@ -1071,6 +1071,27 @@ route('GET', '/api/doctor', (req, res) => {
   sendJSON(res, 200, { status: overall, checks, summary: { ok: checks.length - errors - warns, warnings: warns, errors } });
 });
 
+// --- Self-test ---
+route('GET', '/api/selftest', async (req, res) => {
+  const results = [];
+  function ok(name, detail) { results.push({ name, status: 'PASS', detail: String(detail) }); }
+  function fail(name, detail) { results.push({ name, status: 'FAIL', detail: String(detail) }); }
+
+  try { if (config.model) ok('config', 'model=' + config.model); else fail('config', 'no model'); } catch(e) { fail('config', e.message); }
+  try { const p = resolveProvider(config.model); if (p && p.api_key) ok('provider', p.provider); else fail('provider', 'no key'); } catch(e) { fail('provider', e.message); }
+  try { ok('sessions', Object.keys(sessionsData.sessions || {}).length + ' sessions'); } catch(e) { fail('sessions', e.message); }
+  try { const sid = createSession('selftest'); if (sid) { ok('create_session', sid); deleteSession(sid); } else fail('create_session', 'no id'); } catch(e) { fail('create_session', e.message); }
+  try { ok('memory', readMemory().length + ' chars'); } catch(e) { fail('memory', e.message); }
+  try { ok('skills', getAvailableSkills().length + ' installed'); } catch(e) { fail('skills', e.message); }
+  try { ok('tools', TOOL_DEFINITIONS.length + ' tools'); } catch(e) { fail('tools', e.message); }
+  try { const d = path.join(BASE_DIR, 'workspace'); ok('workspace', fs.existsSync(d) ? fs.readdirSync(d).length + ' files' : 'missing'); } catch(e) { fail('workspace', e.message); }
+  try { ok('fallback_models', getFallbackModels('none').length + ' available'); } catch(e) { fail('fallback', e.message); }
+
+  const passed = results.filter(r => r.status === 'PASS').length;
+  const failed = results.filter(r => r.status === 'FAIL').length;
+  sendJSON(res, 200, { total: results.length, passed, failed, results });
+});
+
 // --- Status ---
 route('GET', '/api/status', (req, res) => {
   sendJSON(res, 200, {
@@ -1591,6 +1612,16 @@ function buildSystemPrompt(customPrompt, sessionPrompt) {
   // Inject workspace context files (AGENTS.md, USER.md, TOOLS.md, HEARTBEAT.md)
   const workspaceDir = path.join(BASE_DIR, 'workspace');
   parts.push(`## Workspace\nBase directory: ${BASE_DIR}\nWorkspace directory: ${workspaceDir}\nContext files (SOUL.md, USER.md, AGENTS.md, TOOLS.md, HEARTBEAT.md): ${BASE_DIR}/\nMemory file: ${MEMORY_PATH}\nSkills directory: ${path.join(BASE_DIR, 'skills')}/\n\nUse read_file/write_file/list_files to access any file.`);
+  // Inject MEMORY.md summary
+  try {
+    const memContent = readMemory();
+    if (memContent && memContent.trim().length > 0) {
+      // Truncate to ~2000 chars to avoid token bloat
+      const memSummary = memContent.length > 2000 ? memContent.slice(0, 2000) + '\n...(truncated)' : memContent;
+      parts.push(`## Memory (MEMORY.md)\n${memSummary}`);
+    }
+  } catch (_) {}
+
   const contextFiles = ['AGENTS.md', 'USER.md', 'TOOLS.md', 'HEARTBEAT.md'];
   for (const cf of contextFiles) {
     const cfPath = path.join(BASE_DIR, cf);
@@ -1602,6 +1633,10 @@ function buildSystemPrompt(customPrompt, sessionPrompt) {
     }
   }
   
+  // Inject current date/time
+  const now = new Date();
+  parts.push(`## Current Date & Time\n${now.toISOString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`);
+
   return parts.join('\n\n---\n\n');
 }
 
@@ -3349,8 +3384,26 @@ async function agentChatStream(opts, res) {
     try {
       llmResult = await streamLLMWithTools(baseUrl, provInfo.api_key, reqBody, res);
     } catch (e) {
-      res.write('data: ' + JSON.stringify({ error: e.message }) + '\n\n');
-      res.end(); return;
+      // Try fallback models
+      const fallbacks = getFallbackModels(provInfo.model);
+      let recovered = false;
+      for (const fb of fallbacks) {
+        try {
+          const fbProv = resolveProvider(fb.model);
+          if (!fbProv || !fbProv.api_key) continue;
+          logger.info('AgentStream', `Fallback to ${fb.model}`);
+          res.write('data: ' + JSON.stringify({ content: `\n⚠️ 切换到 ${fb.model}...\n` }) + '\n\n');
+          const fbBody = JSON.stringify({ model: fb.model, messages: truncatedMessages, tools: toolsForApi, tool_choice: 'auto', temperature: opts.temperature || 0.7, max_tokens: opts.max_tokens || 4096, stream: true });
+          llmResult = await streamLLMWithTools(fbProv.base_url.replace(/\/+$/, ''), fbProv.api_key, fbBody, res);
+          provInfo = fbProv; // Update for future iterations
+          recovered = true;
+          break;
+        } catch (_) { continue; }
+      }
+      if (!recovered) {
+        res.write('data: ' + JSON.stringify({ error: e.message }) + '\n\n');
+        res.end(); return;
+      }
     }
 
     if (llmResult.tool_calls && llmResult.tool_calls.length > 0) {

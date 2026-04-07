@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-07
+
+### Core Alignment
+- **MEMORY.md Injection** — Memory content now included in system_prompt (truncated at 2000 chars)
+- **Date/Time Injection** — Current date, time, and timezone injected into system_prompt
+- **Stream Fallback** — agentChatStream now tries fallback models on LLM failure
+- **Self-test API** — `/api/selftest` endpoint for internal health verification
+
+### System Prompt Parity with Desktop
+Android system_prompt now includes:
+1. SOUL.md (identity)
+2. Session system_prompt (agent templates)
+3. Skills (auto-scanned from skills/ directory)
+4. MEMORY.md (truncated summary)
+5. AGENTS.md, USER.md, TOOLS.md, HEARTBEAT.md (workspace context)
+6. Current date/time + timezone
+7. Available tools description
+
 ## [2.0.0] - 2026-04-07
 
 ### ⭐ Reliability: Gateway Lifecycle

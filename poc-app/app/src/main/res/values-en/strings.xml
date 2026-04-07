@@ -319,4 +319,6 @@
     <string name="search_close">Close search</string>
     <string name="chat_export">Export Chat</string>
     <string name="chat_exported">Exported to %s</string>
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
 </resources>

@@ -169,6 +169,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     override fun getItemCount(): Int = messages.size
 
     inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvDateSeparator: TextView = itemView.findViewById(R.id.tvDateSeparator)
         // 用户消息
         private val layoutUser: View = itemView.findViewById(R.id.layoutUser)
         private val tvUserMessage: TextView = itemView.findViewById(R.id.tvUserMessage)
@@ -196,6 +197,25 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val tvAvatarEmoji: TextView = itemView.findViewById(R.id.tvAvatarEmoji)
 
         fun bind(message: ChatMessage, position: Int) {
+            // Date separator
+            val showDate = if (position == 0) true else {
+                val prev = messages[position - 1]
+                val prevDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(prev.timestamp))
+                val curDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
+                prevDate != curDate
+            }
+            if (showDate && message.timestamp > 0) {
+                tvDateSeparator.visibility = View.VISIBLE
+                val now = System.currentTimeMillis()
+                val diff = now - message.timestamp
+                tvDateSeparator.text = when {
+                    diff < 86400000L -> itemView.context.getString(R.string.date_today)
+                    diff < 172800000L -> itemView.context.getString(R.string.date_yesterday)
+                    else -> java.text.SimpleDateFormat("MM月dd日", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
+                }
+            } else {
+                tvDateSeparator.visibility = View.GONE
+            }
             val timeStr = timeFormat.format(Date(message.timestamp))
 
             if (message.isUser) {

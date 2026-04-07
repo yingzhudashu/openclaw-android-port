@@ -138,6 +138,19 @@ class ChatFragment : Fragment() {
 
         fabSend.setOnClickListener { sendMessage() }
         fabVoice.setOnClickListener { startVoiceInput() }
+
+        // 动态切换：空→语音，有字→发送
+        fabVoice.visibility = View.VISIBLE
+        fabSend.visibility = View.GONE
+        etMessage.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val hasText = !s.isNullOrBlank()
+                fabSend.visibility = if (hasText) View.VISIBLE else View.GONE
+                fabVoice.visibility = if (hasText) View.GONE else View.VISIBLE
+            }
+        })
         etMessage.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) { sendMessage(); true } else false
         }

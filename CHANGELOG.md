@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-07
+
+### Added
+- **SSE Streaming** — Real-time streaming responses with typing effect
+- **Reasoning Display** — Collapsible thinking/reasoning section in AI messages
+- **Tool Call Visualization** — Show tool usage steps during agent execution
+- **Network Status Banner** — Red banner when offline, auto-hide on reconnect with animation
+- **Exponential Backoff Retry** — Auto-retry on network errors (1s→3s, max 2 attempts)
+- **Send Failed Retry** — Tap-to-retry button on failed user messages
+- **Gateway Health Check** — 30-second heartbeat, toast on 3 consecutive failures
+- **Draft Saving** — Input text saved/restored per session via SharedPreferences
+- **Code Block Copy Button** — `[Copy Code]` link after each code block
+- **Link Click Handling** — Markdown `[text](url)` and bare `https://` links open in browser
+- **LinkMovementMethod** — Clickable spans in AI messages
+- **ACCESS_NETWORK_STATE permission** for connectivity monitoring
+
+### Fixed
+- HTML error responses from providers now show friendly error messages
+- Client timeout increased to 10 minutes for long agent runs
+
 ## [1.0.0] - 2026-04-06
 
 ### Added

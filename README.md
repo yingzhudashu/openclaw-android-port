@@ -6,9 +6,15 @@ An open-source Android client for [OpenClaw](https://github.com/openclaw/opencla
 
 ## ✨ Features
 
+- **Streaming Responses** — Real-time SSE streaming with typing effect, reasoning display, and tool call visualization
 - **Multi-provider LLM Support** — Configure multiple AI providers (Alibaba Bailian, OpenAI, Anthropic, DeepSeek) with independent API keys and model lists
 - **Session Management** — Create, switch, rename, and delete chat sessions with persistent history
-- **Markdown Rendering** — Rich message display with code highlighting, tables, and inline formatting
+- **Markdown Rendering** — Rich message display with code highlighting, inline formatting, and clickable links
+- **Code Block Copy** — One-tap copy button on code blocks for easy sharing
+- **Link Handling** — Clickable Markdown links `[text](url)` and bare URLs `https://...`
+- **Network Resilience** — Network status banner, exponential backoff retry (1s→3s), send-failed retry button
+- **Gateway Health Check** — 30-second heartbeat monitoring with auto-reconnect
+- **Draft Saving** — Input text preserved when switching sessions via SharedPreferences
 - **Image Analysis** — Send images for AI-powered visual analysis
 - **File Analysis** — Attach and analyze text files within conversations
 - **Embedding Model** — Optional vector memory with configurable embedding providers

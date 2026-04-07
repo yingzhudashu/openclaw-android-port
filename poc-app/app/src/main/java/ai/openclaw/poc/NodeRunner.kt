@@ -102,6 +102,9 @@ class NodeRunner(private val context: Context) {
             log("Gateway thread started!")
             delay(3000)
 
+            // Start watchdog — auto-restart if Gateway dies
+            startWatchdog()
+
         } catch (e: Exception) {
             log("Failed: ${e.message}")
             Log.e(TAG, "start() failed", e)
@@ -109,8 +112,42 @@ class NodeRunner(private val context: Context) {
         }
     }
 
+    private var watchdogJob: Job? = null
+    private var restartCount = 0
+    private val maxRestarts = 5
+
+    private fun startWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive) {
+                delay(30000) // Check every 30 seconds
+                if (state != State.RUNNING) continue
+                val (healthy, _) = healthCheck()
+                if (!healthy) {
+                    log("Watchdog: Gateway unhealthy!")
+                    if (restartCount < maxRestarts) {
+                        restartCount++
+                        log("Watchdog: Restarting (attempt $restartCount/$maxRestarts)...")
+                        state = State.IDLE
+                        try { start() } catch (e: Exception) {
+                            log("Watchdog: Restart failed: ${e.message}")
+                        }
+                    } else {
+                        log("Watchdog: Max restarts reached, giving up")
+                        state = State.ERROR
+                        break
+                    }
+                } else {
+                    restartCount = 0 // Reset on successful health check
+                }
+            }
+        }
+    }
+
     fun stop() {
         log("Stopping...")
+        watchdogJob?.cancel()
+        watchdogJob = null
         nodeThread?.interrupt()
         nodeThread = null
         state = State.STOPPED

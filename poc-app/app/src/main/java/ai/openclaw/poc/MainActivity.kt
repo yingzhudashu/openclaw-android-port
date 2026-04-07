@@ -132,6 +132,13 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             nodeRunner.start()
         }
+        // Start foreground service to keep Gateway alive
+        val serviceIntent = android.content.Intent(this, GatewayService::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
         // Initialize cron scheduler
         CronWorker.createNotificationChannel(this)
         CronWorker.scheduleAll(this)

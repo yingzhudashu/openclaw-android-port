@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-04-07
+
+### ⭐ Reliability: Gateway Lifecycle
+- **Watchdog** — 30s periodic health check, auto-restart on failure (max 5 retries)
+- **Foreground Service** — Keeps Gateway alive, prevents Android from killing the process
+- **START_STICKY** — System auto-restarts service if killed
+
+### Stability Improvements
+- NodeRunner now monitors Gateway health and auto-recovers from crashes
+- GatewayService runs as foreground notification ("OpenClaw 🦞 AI Gateway running")
+- Proper cleanup on stop (watchdog + thread cancellation)
+
 ## [1.9.0] - 2026-04-07
 
 ### Added

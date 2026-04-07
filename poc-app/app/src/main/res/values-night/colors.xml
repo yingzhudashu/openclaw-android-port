@@ -5,4 +5,39 @@
     <color name="bubble_ai_text">@color/bubble_ai_text_dark</color>
     <color name="timestamp_light">@color/timestamp_dark</color>
     <color name="input_background">@color/input_background_dark</color>
+
+    <!-- 通用文字 -->
+    <color name="text_primary">#E2E3DE</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_hint">#808080</color>
+    <color name="text_disabled">#606060</color>
+
+    <!-- 通用背景 -->
+    <color name="bg_primary">#1C1B1F</color>
+    <color name="bg_secondary">#2D2D2D</color>
+    <color name="bg_card">#2D2D2D</color>
+    <color name="divider">#3D3D3D</color>
+
+    <!-- 分组标题 -->
+    <color name="group_title">#808080</color>
+    <color name="subtitle">#A0A0A0</color>
+
+    <!-- 代码块 -->
+    <color name="code_bg">#2D2D2D</color>
+    <color name="code_text">#FF6B6B</color>
+    <color name="code_block_bg">#263238</color>
+    <color name="code_block_text">#B0BEC5</color>
+
+    <!-- 工具调用 -->
+    <color name="tool_log_bg">#3E3012</color>
+    <color name="tool_log_text">#FFD54F</color>
+    <color name="tool_log_detail">#BCAAA4</color>
+
+    <!-- 顶部栏 -->
+    <color name="topbar_bg">#1C1B1F</color>
+    <color name="topbar_divider">#3D3D3D</color>
+
+    <!-- 头像 -->
+    <color name="avatar_bg">#1B3A1C</color>
+    <color name="input_stroke">#404040</color>
 </resources>

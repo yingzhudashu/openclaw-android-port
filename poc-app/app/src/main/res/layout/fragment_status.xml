@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5"
+    android:background="@color/bg_secondary"
     android:animateLayoutChanges="true">
 
     <LinearLayout
@@ -23,25 +23,25 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_engine" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_engine" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvEngineSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="@string/status_checking" android:textSize="12sp" android:textColor="#4CAF50" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvEngineArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▲" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▲" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailEngine" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp">
                 <TextView android:id="@+id/tvEngineState" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvNodeVersion" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvUptime" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvMemoryUsage" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvSessions" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:layout_marginTop="8dp">
                     <com.google.android.material.button.MaterialButton android:id="@+id/btnRefresh"
@@ -65,18 +65,18 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:id="@+id/tvToolsTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_core_tools" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_core_tools" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvToolsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp" />
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvToolsArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailTools" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"
                 android:visibility="gone">
                 <TextView android:id="@+id/tvToolsList" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#555555" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
+                    android:textSize="12sp" android:textColor="@color/subtitle" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -89,18 +89,18 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:id="@+id/tvSkillsTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_skills" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_skills" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvSkillsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp" />
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvSkillsArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailSkills" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"
                 android:visibility="gone">
                 <TextView android:id="@+id/tvSkillsList" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#555555" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
+                    android:textSize="12sp" android:textColor="@color/subtitle" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -113,18 +113,18 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_memory_title" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_memory_title" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvMemorySummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp" />
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvMemoryArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailMemory" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"
                 android:visibility="gone">
                 <TextView android:id="@+id/tvMemoryContent" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#555555" android:fontFamily="monospace" android:lineSpacingExtra="2dp"
+                    android:textSize="12sp" android:textColor="@color/subtitle" android:fontFamily="monospace" android:lineSpacingExtra="2dp"
                     android:maxLines="15" android:ellipsize="end" />
             </LinearLayout>
         </LinearLayout>
@@ -138,18 +138,18 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="📂 Workspace" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="📂 Workspace" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvWorkspaceSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp" />
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvWorkspaceArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailWorkspace" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"
                 android:visibility="gone">
                 <TextView android:id="@+id/tvWorkspaceFiles" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#555555" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
+                    android:textSize="12sp" android:textColor="@color/subtitle" android:fontFamily="monospace" android:lineSpacingExtra="2dp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -162,30 +162,30 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_browser" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_browser" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvBrowserSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp" />
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp" />
                 <TextView android:id="@+id/tvBrowserArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailBrowser" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"
                 android:visibility="gone">
                 <TextView android:id="@+id/tvBrowserUrl" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" android:ellipsize="end" android:maxLines="1" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" android:ellipsize="end" android:maxLines="1" />
                 <TextView android:id="@+id/tvBrowserTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvBrowserPort" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvBrowserEngine" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <TextView android:id="@+id/tvBrowserRequests" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#666666" />
+                    android:textSize="13sp" android:textColor="@color/text_secondary" />
                 <View android:layout_width="match_parent" android:layout_height="1dp"
                     android:background="#EEEEEE" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="💬 Activity" android:textSize="12sp" android:textStyle="bold" android:textColor="#888888" />
+                    android:text="💬 Activity" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/group_title" />
                 <TextView android:id="@+id/tvBrowserActivity" android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:textSize="11sp" android:textColor="#777777" android:fontFamily="monospace" android:lineSpacingExtra="2dp"
                     android:maxLines="15" android:scrollbars="vertical" />
@@ -201,13 +201,13 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/status_logs_title" android:textSize="15sp" android:textStyle="bold" android:textColor="#212121" />
+                    android:text="@string/status_logs_title" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/text_primary" />
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
                 <TextView android:id="@+id/tvLogsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="12sp" android:textColor="#999999" android:layout_marginEnd="8dp"
+                    android:textSize="12sp" android:textColor="@color/text_hint" android:layout_marginEnd="8dp"
                     android:maxWidth="200dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:id="@+id/tvLogsArrow" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="▼" android:textSize="14sp" android:textColor="#C0C0C0" />
+                    android:text="▼" android:textSize="14sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
             <LinearLayout android:id="@+id/detailLogs" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="12dp"

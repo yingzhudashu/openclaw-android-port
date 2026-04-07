@@ -303,4 +303,8 @@
     <string name="chat_clear_context">Clear Context</string>
     <string name="chat_clear_context_confirm">Clear current session context? Message history will be preserved.</string>
     <string name="chat_context_cleared">Context cleared</string>
+
+    <!-- Phase 5: Dark Mode -->
+    <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_dark_mode">Dark Mode</string>
 </resources>

@@ -107,6 +107,18 @@ class SettingsFragment : Fragment() {
         view.findViewById<View>(R.id.cellMemoryMode).setOnClickListener { showMemoryModePicker() }
         view.findViewById<View>(R.id.cellBackup).setOnClickListener { performBackup() }
         view.findViewById<View>(R.id.cellRestore).setOnClickListener { pickRestoreFile() }
+
+        // Dark mode toggle
+        val switchDarkMode = view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchDarkMode)
+        val nightMode = androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode()
+        switchDarkMode.isChecked = nightMode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+        switchDarkMode.setOnCheckedChangeListener { _, isChecked ->
+            val mode = if (isChecked) androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+                       else androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+            requireContext().getSharedPreferences("openclaw_prefs", 0).edit()
+                .putBoolean("dark_mode", isChecked).apply()
+        }
         view.findViewById<View>(R.id.cellLanguage).setOnClickListener { showLanguagePicker() }
         view.findViewById<View>(R.id.cellMaxSteps).setOnClickListener { showMaxStepsEditor() }
 

@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="@color/bg_secondary">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,7 +13,7 @@
 
         <!-- ═══ AI 配置 ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/settings_group_ai" android:textSize="13sp" android:textColor="#888888"
+            android:text="@string/settings_group_ai" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="4dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -27,16 +27,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🤖" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_model_provider" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_model_provider" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvModelProviderSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/loading" android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:text="@string/loading" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="180dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <!-- 默认模型 -->
             <LinearLayout android:id="@+id/cellDefaultModel" android:layout_width="match_parent" android:layout_height="56dp"
@@ -46,16 +46,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="⚡" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_default_model" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_default_model" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvDefaultModelSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="@string/loading" android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:text="@string/loading" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="180dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <!-- 内嵌模型 -->
             <LinearLayout android:id="@+id/cellEmbedding" android:layout_width="match_parent" android:layout_height="56dp"
@@ -65,16 +65,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🧠" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_embedding" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_embedding" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvEmbeddingSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="160dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <!-- 记忆模式 -->
             <LinearLayout android:id="@+id/cellMemoryMode" android:layout_width="match_parent" android:layout_height="56dp"
@@ -84,15 +84,15 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="💾" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_memory_mode" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_memory_mode" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMemoryModeSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp" />
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <!-- 最大工具调用 -->
             <LinearLayout android:id="@+id/cellMaxSteps" android:layout_width="match_parent" android:layout_height="56dp"
@@ -102,15 +102,15 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🔄" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_max_steps" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_max_steps" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMaxStepsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" />
+                    android:textSize="13sp" android:textColor="@color/text_hint" />
             </LinearLayout>
         </LinearLayout>
 
         <!-- ═══ AI 个性化 ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/settings_group_personal" android:textSize="13sp" android:textColor="#888888"
+            android:text="@string/settings_group_personal" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -123,16 +123,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="👤" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_soul" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_soul" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvSoulSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellUser" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -141,16 +141,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🧑" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_user" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_user" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvUserSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellHeartbeat" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -159,16 +159,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="💓" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_heartbeat" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_heartbeat" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvHeartbeatSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellAgents" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -177,16 +177,16 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🤝" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_agents" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_agents" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvAgentsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellTools" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -195,23 +195,23 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🔧" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_tools" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_tools" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvToolsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
         </LinearLayout>
 
         
         <!-- Memory -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/settings_group_memory" android:textSize="13sp" android:textColor="#888888"
+            android:text="@string/settings_group_memory" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:background="#FFFFFF">
+            android:orientation="vertical" android:background="@color/bg_primary">
 
             <LinearLayout android:id="@+id/cellMemory" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -220,17 +220,17 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🧠" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_memory" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_memory" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMemorySummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
         </LinearLayout>
 <!-- ═══ Skills ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/settings_group_skills" android:textSize="13sp" android:textColor="#888888"
+            android:text="@string/settings_group_skills" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -243,15 +243,15 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="📦" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_installed_skills" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_installed_skills" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvSkillsCount" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="0" android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp" />
+                    android:text="0" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellSkillInstall" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -266,7 +266,7 @@
 
         <!-- ═══ 系统 ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/settings_group_system" android:textSize="13sp" android:textColor="#888888"
+            android:text="@string/settings_group_system" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -279,11 +279,11 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="📤" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_backup" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_backup" android:textSize="16sp" android:textColor="@color/text_primary" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellRestore" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -292,11 +292,11 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="📥" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_restore" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_restore" android:textSize="16sp" android:textColor="@color/text_primary" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellClearCache" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -309,7 +309,7 @@
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:id="@+id/cellLanguage" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -318,15 +318,15 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="🌐" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_language" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_language" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvLangSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp" />
+                    android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
-                android:background="#E8E8E8" android:layout_marginStart="46dp" />
+                android:background="@color/divider" android:layout_marginStart="46dp" />
 
             <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
@@ -334,9 +334,31 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="ℹ️" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                    android:text="@string/settings_about" android:textSize="16sp" android:textColor="#212121" />
+                    android:text="@string/settings_about" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvVersion" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:textSize="13sp" android:textColor="#999999" />
+                    android:textSize="13sp" android:textColor="@color/text_hint" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ═══ Appearance ═══ -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/settings_group_appearance" android:textSize="13sp" android:textColor="@color/group_title"
+            android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:background="@color/bg_card">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingStart="16dp" android:paddingEnd="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="🌙" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/settings_dark_mode" android:textSize="16sp" android:textColor="@color/text_primary" />
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchDarkMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
 

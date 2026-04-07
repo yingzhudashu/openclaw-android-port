@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F5F5F5">
+    android:background="@color/bg_secondary">
 
     <!-- Top Bar -->
     <LinearLayout
@@ -33,7 +33,7 @@
             android:layout_weight="1"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#212121"
+            android:textColor="@color/text_primary"
             android:paddingStart="4dp"
             android:singleLine="true"
             android:ellipsize="end" />
@@ -130,14 +130,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textSize="11sp"
-            android:textColor="#999999" />
+            android:textColor="@color/text_hint" />
 
         <TextView
             android:id="@+id/tvFileInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="#999999" />
+            android:textColor="@color/text_hint" />
     </LinearLayout>
 
 </LinearLayout>

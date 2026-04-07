@@ -39,6 +39,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Restore dark mode preference
+        val darkMode = getSharedPreferences("openclaw_prefs", 0).getBoolean("dark_mode", false)
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            if (darkMode) androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            else androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+        )
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         tabTitles = arrayOf(

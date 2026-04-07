@@ -303,4 +303,8 @@
     <string name="chat_clear_context">清除上下文</string>
     <string name="chat_clear_context_confirm">确定清除当前会话的上下文吗？消息历史将保留。</string>
     <string name="chat_context_cleared">上下文已清除</string>
+
+    <!-- Phase 5: 深色模式 -->
+    <string name="settings_group_appearance">外观</string>
+    <string name="settings_dark_mode">深色模式</string>
 </resources>

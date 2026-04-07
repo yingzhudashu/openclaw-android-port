@@ -4,7 +4,7 @@
     <color name="ic_launcher_background">#2E7D32</color>
     <color name="ic_launcher_foreground">#FFFFFF</color>
 
-    <!-- Material 3 主题色 — 更柔和的绿色 -->
+    <!-- Material 3 涓婚鑹?鈥?鏇存煍鍜岀殑缁胯壊 -->
     <color name="md_theme_primary">#2E7D32</color>
     <color name="md_theme_on_primary">#FFFFFF</color>
     <color name="md_theme_primary_container">#C8E6C9</color>
@@ -12,7 +12,7 @@
     <color name="md_theme_secondary">#546E57</color>
     <color name="md_theme_surface">#FAFDFB</color>
 
-    <!-- 聊天气泡 -->
+    <!-- 鑱婂ぉ姘旀场 -->
     <color name="bubble_user">#2E7D32</color>
     <color name="bubble_user_text">#FFFFFF</color>
     <color name="bubble_ai">#F5F5F5</color>
@@ -20,41 +20,57 @@
     <color name="bubble_ai_dark">#2D3130</color>
     <color name="bubble_ai_text_dark">#E2E3DE</color>
 
-    <!-- AI 头像背景 -->
+    <!-- AI 澶村儚鑳屾櫙 -->
     <color name="avatar_bg">#E8F5E9</color>
 
-    <!-- 标签文字 -->
+    <!-- 鏍囩鏂囧瓧 -->
     <color name="label_text">#66BB6A</color>
 
-    <!-- 时间戳 -->
+    <!-- 鏃堕棿鎴?-->
     <color name="timestamp_light">#9E9E9E</color>
     <color name="timestamp_dark">#757575</color>
 
-    <!-- 输入框 -->
+    <!-- 杈撳叆妗?-->
     <color name="input_background">#F0F0F0</color>
     <color name="input_background_dark">#2D2D2D</color>
     <color name="input_stroke">#E0E0E0</color>
 
-    <!-- 代码块 -->
+    <!-- 浠ｇ爜鍧?-->
     <color name="code_bg">#F0F0F0</color>
     <color name="code_text">#D32F2F</color>
     <color name="code_block_bg">#ECEFF1</color>
     <color name="code_block_text">#37474F</color>
 
-    <!-- 工具调用 -->
+    <!-- 宸ュ叿璋冪敤 -->
     <color name="tool_log_bg">#FFF8E1</color>
     <color name="tool_log_text">#F57F17</color>
     <color name="tool_log_detail">#795548</color>
 
-    <!-- 状态指示 -->
+    <!-- 鐘舵€佹寚绀?-->
     <color name="status_running">#4CAF50</color>
     <color name="status_stopped">#9E9E9E</color>
     <color name="status_error">#F44336</color>
 
-    <!-- 附件按钮 -->
+    <!-- 闄勪欢鎸夐挳 -->
     <color name="attach_btn">#757575</color>
 
-    <!-- 顶部栏 -->
+    <!-- 椤堕儴鏍?-->
     <color name="topbar_bg">#FFFFFF</color>
     <color name="topbar_divider">#E0E0E0</color>
+
+    <!-- 通用文字 -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_hint">#999999</color>
+    <color name="text_disabled">#C0C0C0</color>
+
+    <!-- 通用背景 -->
+    <color name="bg_primary">#FFFFFF</color>
+    <color name="bg_secondary">#F5F5F5</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="divider">#E8E8E8</color>
+
+    <!-- 分组标题 -->
+    <color name="group_title">#888888</color>
+    <color name="subtitle">#555555</color>
 </resources>

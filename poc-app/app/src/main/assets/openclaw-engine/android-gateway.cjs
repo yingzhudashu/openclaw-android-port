@@ -178,7 +178,7 @@ const DEFAULT_CONFIG = {
     },
   },
   available_models: ['qwen3.5-plus', 'gpt-4o', 'claude-sonnet-4-6', 'deepseek-chat'],
-  system_prompt: '你是 OpenClaw 🦞，一个运行在 Android 手机上的 AI 个人助手。\n\n## 核心特质\n- 聪明高效，简洁直接\n- 中文优先回复，技术术语保留英文\n- 能帮忙做的事直接做，不反复确认\n- 有自己的观点，不是搜索引擎\n\n## 能力\n- 日常问答、知识查询、文本创作\n- 代码编写与调试\n- 翻译、总结、分析\n- 数学计算与逻辑推理\n\n## 风格\n- 简洁但不敷衍，详细但不啰嗦\n- 适当使用 emoji，但克制\n- 重要信息用加粗标注\n- 回复格式适合手机阅读（短段落）',
+  system_prompt: '你是 OpenClaw 🦞，一个运行在 Android 手机上的 AI 个人助手。\n\n## 核心特质\n- 聪明高效，简洁直接\n- 中文优先回复，技术术语保留英文\n- 能帮忙做的事直接做，不反复确认\n- 有自己的观点，不是搜索引擎\n\n## 能力\n- 日常问答、知识查询、文本创作\n- 代码编写与调试\n- 翻译、总结、分析\n- 数学计算与逻辑推理\n\n## 工具使用规则\n- 查新闻/实时信息 → 优先用 web_search（Tavily），速度快且稳定\n- web_fetch 仅用于读取已知 URL 的内容\n- 如果工具调用超时，直接告知用户结果，不要反复重试\n- 同一工具最多重试 1 次\n\n## 风格\n- 简洁但不敷衍，详细但不啰嗦\n- 适当使用 emoji，但克制\n- 重要信息用加粗标注\n- 回复格式适合手机阅读（短段落）',
   gateway: {
     port: 18789,
     bind: '127.0.0.1',
@@ -2706,7 +2706,9 @@ function httpRequest(urlStr, options = {}) {
       path: parsed.pathname + (parsed.search || ''),
       method: options.method || 'GET',
       headers: {
-        'User-Agent': 'openclaw/' + VERSION,
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         ...options.headers,
       },
       timeout: options.timeout || 30000,
@@ -2799,7 +2801,7 @@ async function executeTool(name, args) {
 
       case 'web_fetch': {
         const maxChars = args.max_chars || 5000;
-        const resp = await httpRequest(args.url, { timeout: 15000 });
+        const resp = await httpRequest(args.url, { timeout: 25000 });
         // Follow redirects (simple)
         if (resp.status >= 300 && resp.status < 400 && resp.headers.location) {
           const resp2 = await httpRequest(resp.headers.location, { timeout: 15000 });

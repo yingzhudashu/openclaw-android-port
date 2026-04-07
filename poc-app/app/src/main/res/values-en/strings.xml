@@ -314,4 +314,7 @@
     <string name="shortcut_new_chat_long">Start new chat</string>
     <string name="shortcut_voice">Voice Ask</string>
     <string name="shortcut_voice_long">Ask with voice</string>
+    <string name="search_messages">Search messages</string>
+    <string name="search_hint">Search chat history…</string>
+    <string name="search_close">Close search</string>
 </resources>

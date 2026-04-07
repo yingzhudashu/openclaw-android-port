@@ -100,6 +100,38 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         notifyItemRangeRemoved(0, size)
     }
 
+    private var searchQuery: String = ""
+
+    fun highlightSearch(query: String): Int {
+        searchQuery = query.lowercase()
+        notifyDataSetChanged()
+        // Return first matching position
+        for (i in messages.indices.reversed()) {
+            if (messages[i].content.lowercase().contains(searchQuery)) return i
+        }
+        return -1
+    }
+
+    private fun highlightMatches(ssb: SpannableStringBuilder, text: String, query: String) {
+        val lower = text.lowercase()
+        var start = 0
+        while (true) {
+            val idx = lower.indexOf(query, start)
+            if (idx < 0) break
+            ssb.setSpan(
+                BackgroundColorSpan(0x60FFEB3B),  // Semi-transparent yellow
+                idx, idx + query.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            start = idx + query.length
+        }
+    }
+
+    fun clearHighlight() {
+        searchQuery = ""
+        notifyDataSetChanged()
+    }
+
     fun getMessageCount(): Int = messages.size
 
     fun getMessageAt(position: Int): ChatMessage? {
@@ -169,6 +201,12 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                 layoutUser.visibility = View.VISIBLE
                 layoutAi.visibility = View.GONE
                 tvUserMessage.text = message.content
+                // Search highlight for user messages
+                if (searchQuery.isNotEmpty() && message.content.lowercase().contains(searchQuery)) {
+                    val ssb = SpannableStringBuilder(message.content)
+                    highlightMatches(ssb, message.content, searchQuery)
+                    tvUserMessage.text = ssb
+                }
                 tvUserTime.text = timeStr
 
                 // 图片（微信风格：圆角卡片，点击看原图）

@@ -314,4 +314,7 @@
     <string name="shortcut_new_chat_long">开始新对话</string>
     <string name="shortcut_voice">语音提问</string>
     <string name="shortcut_voice_long">用语音提问</string>
+    <string name="search_messages">搜索消息</string>
+    <string name="search_hint">搜索聊天记录…</string>
+    <string name="search_close">关闭搜索</string>
 </resources>

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-04-07
+
+### Added
+- **Model Fallback** — When primary model fails, automatically tries other configured models
+- **In-Chat Model Switcher** — Tap model name in topbar to switch models mid-conversation
+- **Context Token Management** — Automatic message truncation at ~120K tokens to prevent context overflow
+- **Token Estimation** — `estimateTokens()` for mixed CJK/English text (~3 chars/token)
+
+### Improved
+- Gateway: `getFallbackModels()` returns all configured alternatives
+- Gateway: `truncateMessages()` keeps system messages + newest messages within token budget
+- Topbar shows current model with provider-colored emoji indicator
+
 ## [1.7.0] - 2026-04-07
 
 ### ⭐ CORE: Agent Stream (SSE + Tool Loop)

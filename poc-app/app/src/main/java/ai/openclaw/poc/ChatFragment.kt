@@ -139,6 +139,9 @@ class ChatFragment : Fragment() {
         fabSend.setOnClickListener { sendMessage() }
         fabVoice.setOnClickListener { startVoiceInput() }
 
+        // Tap model name to switch model
+        tvToolCount.setOnClickListener { showModelPicker() }
+
         // 动态切换：空→语音，有字→发送
         fabVoice.visibility = View.VISIBLE
         fabSend.visibility = View.GONE
@@ -334,6 +337,52 @@ class ChatFragment : Fragment() {
         AgentTemplate("翻译官", "🌐", "你是一个专业翻译\u3002\u652f持中英日韩互译\u3002\u7ffb译自然流畅\uff0c保留专业术语\u3002\u4e0d加额外解释\uff0c直接给译文\u3002"),
         AgentTemplate("写作助手", "✍️", "你是一个写作助手\u3002\u64c5长各种文体\uff1a博客\u3001报告\u3001邮件\u3001文案\u3002\u98ce格灵活\uff0c可正式可轻松\u3002")
     )
+
+    private fun showModelPicker() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/models") }
+                val modelsArr = response.optJSONArray("models") ?: return@launch
+                val models = mutableListOf<Pair<String, String>>() // model, provider
+                for (i in 0 until modelsArr.length()) {
+                    val obj = modelsArr.getJSONObject(i)
+                    models.add(obj.optString("id") to obj.optString("provider"))
+                }
+                if (models.isEmpty()) return@launch
+
+                val items = models.map { (m, p) ->
+                    val prefix = when {
+                        m.contains("qwen") -> "🤖"
+                        m.contains("gpt") -> "🟢"
+                        m.contains("claude") -> "🟠"
+                        m.contains("deepseek") -> "🔵"
+                        else -> "⭐"
+                    }
+                    val current = if (m == currentModel) " ✔" else ""
+                    "$prefix $m ($p)$current"
+                }.toTypedArray()
+
+                AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.model_pick_title)
+                    .setItems(items) { _, which ->
+                        val (model, provider) = models[which]
+                        currentModel = model
+                        currentProvider = provider
+                        // Save per-session
+                        requireContext().getSharedPreferences("openclaw_prefs", 0).edit()
+                            .putString("session_model_$sessionId", model)
+                            .putString("session_provider_$sessionId", provider)
+                            .apply()
+                        tvToolCount.text = items[which].replace(" ✔", "")
+                        Toast.makeText(requireContext(), getString(R.string.model_switched, model), Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            } catch (_: Exception) {
+                Toast.makeText(requireContext(), "Failed to load models", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     private fun showNewSessionPicker() {
         val items = agentTemplates.map { "${it.emoji} ${it.name}" }.toTypedArray()
@@ -543,6 +592,16 @@ class ChatFragment : Fragment() {
     }
 
     private fun fetchToolCount() {
+        // Show current model name instead of tool count
+        tvToolCount.text = currentModel.let {
+            when {
+                it.contains("qwen") -> "🤖 $it"
+                it.contains("gpt") -> "🟢 $it"
+                it.contains("claude") -> "🟠 $it"
+                it.contains("deepseek") -> "🔵 $it"
+                else -> "🤖 $it"
+            }
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/tools") }

@@ -31,6 +31,7 @@ const START_TIME = Date.now();
 const MAX_BODY_SIZE = 20 * 1024 * 1024; // 20 MB request body limit (images can be large)
 const MAX_SESSIONS = 100;
 const MAX_MESSAGES_PER_SESSION = 200;
+const MAX_CONTEXT_TOKENS = 120000; // ~120k tokens, safe for most models
 const SESSION_SAVE_DEBOUNCE_MS = 3000;
 
 // Resolve base directory: prefer env override, else the directory this script lives in
@@ -287,6 +288,49 @@ function resolveProvider(modelName, explicitProvider) {
     return { provider: 'bailian', api_key: fallbackP.api_key, base_url: fallbackP.base_url || DEFAULT_CONFIG.providers.bailian.base_url, model: m };
   }
   return null;
+}
+
+// Get fallback models (all configured models with API keys, excluding the failed one)
+function getFallbackModels(failedModel) {
+  const fallbacks = [];
+  for (const [provName, prov] of Object.entries(config.providers || {})) {
+    if (!prov.api_key) continue;
+    for (const m of (prov.models || [])) {
+      if (m !== failedModel) {
+        fallbacks.push({ model: m, provider: provName });
+      }
+    }
+  }
+  return fallbacks;
+}
+
+// Estimate token count (~4 chars per token for mixed CJK/English)
+function estimateTokens(text) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 3);
+}
+
+// Truncate message history to fit within context window
+function truncateMessages(messages, maxTokens) {
+  if (!messages || messages.length === 0) return messages;
+  let totalTokens = 0;
+  // Always keep system message
+  const systemMsgs = messages.filter(m => m.role === 'system');
+  const nonSystemMsgs = messages.filter(m => m.role !== 'system');
+  for (const m of systemMsgs) totalTokens += estimateTokens(typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
+  // Add messages from newest to oldest
+  const kept = [];
+  for (let i = nonSystemMsgs.length - 1; i >= 0; i--) {
+    const m = nonSystemMsgs[i];
+    const tokens = estimateTokens(typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
+    if (totalTokens + tokens > maxTokens) break;
+    totalTokens += tokens;
+    kept.unshift(m);
+  }
+  if (kept.length < nonSystemMsgs.length) {
+    logger.info('Context', `Truncated ${nonSystemMsgs.length - kept.length} messages to fit ${maxTokens} token limit`);
+  }
+  return [...systemMsgs, ...kept];
 }
 
 // ─── Session Manager ─────────────────────────────────────────────────────────
@@ -2984,11 +3028,14 @@ async function agentChat(opts) {
     steps++;
     logger.info('Agent', `Step ${steps}/${maxSteps}, ${messages.length} messages`);
 
+    // Truncate context if needed
+    const truncatedMessages = truncateMessages(messages, MAX_CONTEXT_TOKENS);
+
     // Call LLM with tools — strip non-standard fields (category) before sending to API
     const toolsForApi = TOOL_DEFINITIONS.map(t => ({ type: t.type, function: t.function }));
     const reqBody = JSON.stringify({
       model: provInfo.model,
-      messages,
+      messages: truncatedMessages,
       tools: toolsForApi,
       tool_choice: 'auto',
       temperature: opts.temperature !== undefined ? opts.temperature : 0.7,
@@ -3133,11 +3180,14 @@ async function agentChatStream(opts, res) {
     steps++;
     logger.info('AgentStream', `Step ${steps}/${maxSteps}`);
 
+    // Truncate context if needed
+    const truncatedMessages = truncateMessages(messages, MAX_CONTEXT_TOKENS);
+
     // Try streaming from LLM
     const toolsForApi = TOOL_DEFINITIONS.map(t => ({ type: t.type, function: t.function }));
     const reqBody = JSON.stringify({
       model: provInfo.model,
-      messages,
+      messages: truncatedMessages,
       tools: toolsForApi,
       tool_choice: 'auto',
       temperature: opts.temperature !== undefined ? opts.temperature : 0.7,
@@ -3347,6 +3397,34 @@ route('POST', '/api/agent/chat', async (req, res) => {
     clearInterval(keepAlive);
 
     if (result.error) {
+      // Try fallback models
+      const fallbacks = getFallbackModels(model);
+      for (const fb of fallbacks) {
+        logger.info('Agent', `Primary model failed, trying fallback: ${fb.model} (${fb.provider})`);
+        const fbResult = await agentChat({
+          model: fb.model,
+          messages: sess.messages,
+          system_prompt: buildSystemPrompt(config.system_prompt, sess.system_prompt),
+          temperature: body.temperature,
+          max_tokens: body.max_tokens,
+        });
+        if (!fbResult.error) {
+          clearInterval(keepAlive);
+          addMessage(sessionId, 'assistant', fbResult.content);
+          return sendJSON(res, 200, {
+            session_id: sessionId,
+            model: fbResult.model || fb.model,
+            content: fbResult.content,
+            reasoning: fbResult.reasoning || '',
+            usage: fbResult.usage,
+            steps: fbResult.steps,
+            tool_log: fbResult.tool_log,
+            fallback: true,
+            original_model: model,
+          });
+        }
+      }
+      clearInterval(keepAlive);
       return sendJSON(res, 502, { error: result.error, message: result.message, detail: result.detail, session_id: sessionId });
     }
 

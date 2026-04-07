@@ -339,4 +339,6 @@
     <string name="heartbeat_disabled">Heartbeat disabled</string>
     <string name="agent_pick_title">New Session</string>
     <string name="agent_welcome">🤖 %s ready. How can I help?</string>
+    <string name="model_pick_title">Switch Model</string>
+    <string name="model_switched">Switched to %s</string>
 </resources>

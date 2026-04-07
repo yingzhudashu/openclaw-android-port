@@ -339,4 +339,6 @@
     <string name="heartbeat_disabled">心跳监控已关闭</string>
     <string name="agent_pick_title">新建会话</string>
     <string name="agent_welcome">🤖 %s 已就绪，有什么可以帮你？</string>
+    <string name="model_pick_title">切换模型</string>
+    <string name="model_switched">已切换到 %s</string>
 </resources>

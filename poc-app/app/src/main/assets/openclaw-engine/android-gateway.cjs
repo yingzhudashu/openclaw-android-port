@@ -3008,56 +3008,109 @@ async function executeToolInner(name, args) {
       }
 
       case 'news_summary': {
-        // Use browser to fetch news from Chinese sites
-        const source = args.source || 'default';
-        const urls = {
-          sina: 'https://news.sina.cn/',
-          thepaper: 'https://m.thepaper.cn/',
-          default: 'https://m.thepaper.cn/',
-        };
-        const url = urls[source] || urls.default;
+        // Fetch news via RSS feeds (no browser dependency)
+        const RSS_SOURCES = [
+          { name: '新浪财经', url: 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&k=&num=20&page=1&r=0.1&callback=' },
+          { name: '澎湃新闻', url: 'https://www.thepaper.cn/rss_newslist_channel_1' },
+          { name: '36氪', url: 'https://36kr.com/feed' },
+          { name: '财联社', url: 'https://www.cls.cn/api/sw?app=CailianpressWeb&os=web&sv=8.4.6&sign=1' },
+        ];
+        const allNews = [];
         
-        try {
-          // Navigate
-          const navResult = await httpRequest(BROWSER_BRIDGE_URL + '/browser/navigate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, timeout_ms: 25000 }),
-            timeout: 30000,
-          });
-          const navData = JSON.parse(navResult.body);
-          if (navData.error) {
-            return { error: `Failed to load news: ${navData.error}`, url };
-          }
-          
-          // Give page time to render JS content
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Extract content
-          const contentResp = await httpRequest(BROWSER_BRIDGE_URL + '/browser/content?max_chars=30000', { timeout: 10000 });
-          const contentData = JSON.parse(contentResp.body);
-          const content = contentData.content || '';
-          
-          // Extract headlines (simple pattern matching)
-          const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 10 && l.length < 200);
-          const headlines = [];
-          for (const line of lines) {
-            if (/\d+/.test(line) || /[\u4e00-\u9fa5]{4,}/.test(line)) {
-              headlines.push(line);
+        // Try Tavily first for best results
+        const tavilyKey = getTavilyKey();
+        if (tavilyKey) {
+          try {
+            const tavilyBody = JSON.stringify({
+              api_key: tavilyKey,
+              query: '今日中国热点新闻',
+              max_results: 10,
+              search_depth: 'basic',
+              include_answer: true,
+            });
+            const tavilyResp = await httpRequest('https://api.tavily.com/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(tavilyBody) },
+              body: tavilyBody,
+              timeout: 15000,
+            });
+            const tavilyData = JSON.parse(tavilyResp.body);
+            if (tavilyData.results) {
+              for (const r of tavilyData.results) {
+                allNews.push({ title: r.title, source: 'Tavily', url: r.url, summary: (r.content || '').slice(0, 200) });
+              }
             }
-            if (headlines.length >= 15) break;
+            if (tavilyData.answer) {
+              return {
+                source: 'Tavily AI Search',
+                answer: tavilyData.answer,
+                articles: allNews.slice(0, 15),
+                count: allNews.length,
+                fetched_at: new Date().toISOString(),
+              };
+            }
+          } catch (e) {
+            logger.warn('Tool', `Tavily news failed: ${e.message}`);
           }
-          
-          return {
-            source: source === 'sina' ? '新浪新闻' : '澎湃新闻',
-            url,
-            headlines: headlines.slice(0, 10),
-            raw_content_length: content.length,
-            fetched_at: new Date().toISOString(),
-          };
-        } catch (e) {
-          return { error: `News fetch failed: ${e.message}`, suggestion: 'Try again or use browser_navigate directly' };
         }
+        
+        // Fallback: fetch from multiple RSS/web sources directly
+        const fetchPromises = [
+          // 新浪财经 API
+          httpRequest('https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&k=&num=15&page=1&r=0.1', { timeout: 10000 })
+            .then(r => {
+              try {
+                const d = JSON.parse(r.body);
+                if (d.result && d.result.data) {
+                  for (const item of d.result.data.slice(0, 10)) {
+                    allNews.push({ title: item.title, source: '新浪财经', url: item.url, summary: stripHtml(item.summary || item.intro || '').slice(0, 150) });
+                  }
+                }
+              } catch(_) {}
+            }).catch(() => {}),
+          // 36氪 RSS
+          httpRequest('https://36kr.com/feed', { timeout: 10000 })
+            .then(r => {
+              const items = r.body.match(/<item>[\s\S]*?<\/item>/g) || [];
+              for (const item of items.slice(0, 10)) {
+                const title = (item.match(/<title><\!\[CDATA\[(.+?)\]\]><\/title>/) || item.match(/<title>(.+?)<\/title>/) || [])[1];
+                const link = (item.match(/<link>(.+?)<\/link>/) || [])[1];
+                const desc = (item.match(/<description><\!\[CDATA\[(.+?)\]\]><\/description>/) || [])[1];
+                if (title) allNews.push({ title, source: '36氪', url: link || '', summary: stripHtml(desc || '').slice(0, 150) });
+              }
+            }).catch(() => {}),
+          // 澎湃新闻 web
+          httpRequest('https://www.thepaper.cn/', { timeout: 10000 })
+            .then(r => {
+              const matches = r.body.match(/<a[^>]*href="\/newsDetail_forward_\d+"[^>]*>([^<]+)<\/a>/g) || [];
+              for (const m of matches.slice(0, 10)) {
+                const title = stripHtml(m).trim();
+                const href = (m.match(/href="([^"]+)"/) || [])[1];
+                if (title && title.length > 5) allNews.push({ title, source: '澎湃新闻', url: href ? 'https://www.thepaper.cn' + href : '', summary: '' });
+              }
+            }).catch(() => {}),
+        ];
+        
+        await Promise.allSettled(fetchPromises);
+        
+        if (allNews.length === 0) {
+          return { error: '无法获取新闻，所有源均失败。请检查网络连接。', suggestion: '可以尝试用 web_search 工具搜索新闻' };
+        }
+        
+        // Deduplicate by title similarity
+        const seen = new Set();
+        const unique = [];
+        for (const n of allNews) {
+          const key = n.title.slice(0, 15);
+          if (!seen.has(key)) { seen.add(key); unique.push(n); }
+        }
+        
+        return {
+          source: '多源聚合（新浪/36氪/澎湃）',
+          articles: unique.slice(0, 20),
+          count: unique.length,
+          fetched_at: new Date().toISOString(),
+        };
       }
 
       // ─── Skill Management ────────────────────────────────────────────

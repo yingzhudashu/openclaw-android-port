@@ -1078,9 +1078,13 @@ class ChatFragment : Fragment() {
                                         if (steps > 0) {
                                             // Clean up tool log lines for final display
                                             val content = accumulated.toString()
-                                            val cleanContent = content.replace(Regex("\n[🔧✅][^\n]*"), "")
-                                            accumulated.setLength(0)
-                                            accumulated.append(cleanContent.trimStart())
+                                            val cleanContent = content.replace(Regex("\n[🔧✅][^\n]*"), "").trimStart()
+                                            if (cleanContent.isNotBlank()) {
+                                                accumulated.setLength(0)
+                                                accumulated.append(cleanContent)
+                                            }
+                                            // If cleanContent is empty, keep original accumulated (with tool lines)
+                                            // so user sees what tools were called instead of blank
                                             onChunk(accumulated.toString())
                                         }
                                         break

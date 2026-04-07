@@ -3,6 +3,7 @@ package ai.openclaw.poc
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.*
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -51,7 +52,6 @@ class NodeRunner(private val context: Context) {
         state = State.STARTING
 
         try {
-            // Step 1: 解压 engine 脚本到 filesDir
             val engineDir = extractEngine()
             val entryScript = File(engineDir, ENTRY_SCRIPT)
             
@@ -61,7 +61,6 @@ class NodeRunner(private val context: Context) {
                 return
             }
 
-            // Step 2: 准备数据目录
             val dataDir = File(context.filesDir, DATA_DIR_NAME).also { it.mkdirs() }
             File(dataDir, "config").mkdirs()
             File(dataDir, "state").mkdirs()
@@ -72,7 +71,6 @@ class NodeRunner(private val context: Context) {
             log("Data: ${dataDir.absolutePath}")
             log("Size: ${entryScript.length() / 1024} KB")
 
-            // Step 3: 在新线程中启动 Node.js
             nodeThread = Thread {
                 try {
                     val exitCode = startNodeWithArguments(
@@ -81,7 +79,6 @@ class NodeRunner(private val context: Context) {
                         true
                     )
                     log("Node.js exited with code $exitCode")
-                    // exit code -2 means already started (C++ guard), treat as running
                     if (exitCode == -2) {
                         log("Node already initialized in this process, checking health...")
                     } else {
@@ -102,7 +99,6 @@ class NodeRunner(private val context: Context) {
             log("Gateway thread started!")
             delay(3000)
 
-            // Start watchdog — auto-restart if Gateway dies
             startWatchdog()
 
         } catch (e: Exception) {
@@ -120,7 +116,7 @@ class NodeRunner(private val context: Context) {
         watchdogJob?.cancel()
         watchdogJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
-                delay(30000) // Check every 30 seconds
+                delay(30000)
                 if (state != State.RUNNING) continue
                 val (healthy, _) = healthCheck()
                 if (!healthy) {
@@ -138,7 +134,7 @@ class NodeRunner(private val context: Context) {
                         break
                     }
                 } else {
-                    restartCount = 0 // Reset on successful health check
+                    restartCount = 0
                 }
             }
         }
@@ -182,11 +178,13 @@ class NodeRunner(private val context: Context) {
 
     /**
      * 解压 assets/openclaw-engine/ 到 filesDir/openclaw-engine/
-     * 支持递归子目录，版本变化时强制重新解压
+     * 版本变化时重新解压，但保留用户配置（API Key、模型选择等）
      */
     private fun extractEngine(): File {
         val targetDir = File(context.filesDir, ENGINE_DIR_NAME)
         val versionFile = File(targetDir, ".version")
+        val configFile = File(targetDir, "openclaw.json")
+
         val currentVersion = try {
             val configStream = context.assets.open("$ENGINE_ASSETS/openclaw.json")
             val configText = configStream.bufferedReader().readText()
@@ -201,6 +199,15 @@ class NodeRunner(private val context: Context) {
             log("Engine already extracted (v$currentVersion)")
             return targetDir
         }
+
+        // ★ Save user config before re-extraction
+        val savedConfig = if (configFile.exists()) {
+            try {
+                configFile.readText().also {
+                    log("Saved user config (${it.length} bytes) before re-extraction")
+                }
+            } catch (_: Exception) { null }
+        } else null
         
         if (targetDir.exists()) {
             log("Version changed ($existingVersion -> $currentVersion), cleaning old engine...")
@@ -212,9 +219,49 @@ class NodeRunner(private val context: Context) {
 
         extractAssetDir(ENGINE_ASSETS, targetDir)
 
+        // ★ Restore user config after extraction
+        if (savedConfig != null) {
+            try {
+                val defaultConfig = if (configFile.exists()) configFile.readText() else "{}"
+                val merged = mergeConfig(savedConfig, defaultConfig)
+                configFile.writeText(merged)
+                log("Restored user config after engine update")
+            } catch (e: Exception) {
+                log("Failed to merge config: ${e.message}, restoring as-is")
+                try { configFile.writeText(savedConfig) } catch (_: Exception) {}
+            }
+        }
+
         File(targetDir, ".version").writeText(currentVersion)
         log("Engine extracted to ${targetDir.absolutePath} (v$currentVersion)")
         return targetDir
+    }
+
+    /**
+     * Merge user config with new default config.
+     * User's providers, model, system_prompt, embedding take priority.
+     */
+    private fun mergeConfig(userJson: String, defaultJson: String): String {
+        val user = JSONObject(userJson)
+        val defaults = JSONObject(defaultJson)
+
+        // Preserve user's providers (API keys)
+        if (user.has("providers")) {
+            defaults.put("providers", user.getJSONObject("providers"))
+        }
+        // Preserve user's model choice
+        if (user.has("model") && user.optString("model").isNotEmpty()) {
+            defaults.put("model", user.getString("model"))
+        }
+        // Preserve system_prompt
+        if (user.has("system_prompt")) {
+            defaults.put("system_prompt", user.get("system_prompt"))
+        }
+        // Preserve embedding config
+        if (user.has("embedding")) {
+            defaults.put("embedding", user.getJSONObject("embedding"))
+        }
+        return defaults.toString(2)
     }
 
     private fun extractAssetDir(assetPath: String, targetDir: File) {

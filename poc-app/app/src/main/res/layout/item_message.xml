@@ -70,7 +70,7 @@
             app:cardElevation="1dp"
             app:strokeWidth="0.5dp"
             app:strokeColor="#E0E0E0"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/bg_card"
             android:visibility="gone">
 
             <LinearLayout
@@ -110,7 +110,7 @@
                     android:layout_width="36dp"
                     android:layout_height="36dp"
                     android:gravity="center"
-                    android:text="📄"
+                    android:text="›"
                     android:textSize="24sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -193,7 +193,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:gravity="center"
-                android:text="🦞"
+                android:text="›"
                 android:textSize="16sp" />
         </com.google.android.material.card.MaterialCardView>
 

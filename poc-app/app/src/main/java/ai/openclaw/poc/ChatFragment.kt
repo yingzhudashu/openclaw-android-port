@@ -39,8 +39,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Locale
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 
 class ChatFragment : Fragment() {
 
@@ -54,7 +52,6 @@ class ChatFragment : Fragment() {
     private lateinit var fabSend: FloatingActionButton
     private lateinit var searchBar: View
     private lateinit var etSearch: EditText
-    private val VOICE_REQUEST_CODE = 9001
     private lateinit var tvSessionId: TextView
     private lateinit var tvSessionTitle: TextView
     private lateinit var tvToolCount: TextView
@@ -124,7 +121,6 @@ class ChatFragment : Fragment() {
         rvMessages = view.findViewById(R.id.rvMessages)
         etMessage = view.findViewById(R.id.etMessage)
         fabSend = view.findViewById(R.id.fabSend)
-        fabVoice = view.findViewById(R.id.fabVoice)
         tvSessionId = view.findViewById(R.id.tvSessionId)
         tvSessionTitle = view.findViewById(R.id.tvSessionTitle)
         tvToolCount = view.findViewById(R.id.tvToolCount)
@@ -136,21 +132,18 @@ class ChatFragment : Fragment() {
         rvMessages.adapter = messageAdapter
 
         fabSend.setOnClickListener { sendMessage() }
-        fabVoice.setOnClickListener { startVoiceInput() }
 
         // Tap model name to switch model
         tvToolCount.setOnClickListener { showModelPicker() }
 
         // 动态切换：空→语音，有字→发送
-        fabVoice.visibility = View.VISIBLE
-        fabSend.visibility = View.GONE
+        fabSend.alpha = 0.4f
         etMessage.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
                 val hasText = !s.isNullOrBlank()
-                fabSend.visibility = if (hasText) View.VISIBLE else View.GONE
-                fabVoice.visibility = if (hasText) View.GONE else View.VISIBLE
+                fabSend.alpha = if (hasText) 1.0f else 0.4f
             }
         })
         etMessage.setOnEditorActionListener { _, actionId, _ ->
@@ -234,15 +227,6 @@ class ChatFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        // Handle shortcut actions
-        (activity as? MainActivity)?.let { main ->
-            when (main.shortcutAction) {
-                "voice" -> {
-                    main.shortcutAction = null
-                    startVoiceInput()
-                }
-            }
-        }
     }
 
     override fun onDestroyView() {
@@ -444,30 +428,7 @@ class ChatFragment : Fragment() {
 
     // ─── Send Message ────────────────────────────────────────────────────────
 
-    private fun startVoiceInput() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_input_hint))
-        }
-        try {
-            startActivityForResult(intent, VOICE_REQUEST_CODE)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), getString(R.string.voice_not_supported), Toast.LENGTH_SHORT).show()
-        }
-    }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VOICE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            val result = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            result?.firstOrNull()?.let { text ->
-                etMessage.setText(text)
-                etMessage.setSelection(text.length)
-            }
-        }
-    }
 
     private fun sendMessage() {
         val text = etMessage.text.toString().trim()

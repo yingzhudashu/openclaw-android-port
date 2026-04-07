@@ -1,10 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/md_theme_surface">
+    android:background="@color/bg_primary">
 
     <!-- 椤堕儴鏍?-->
     <LinearLayout
@@ -88,7 +88,7 @@
         android:layout_height="wrap_content"
         android:background="#F44336"
         android:text="@string/network_disconnected"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/bubble_user_text"
         android:textSize="13sp"
         android:gravity="center"
         android:paddingTop="6dp"
@@ -159,16 +159,6 @@
                 android:textColorHint="@color/timestamp_light" />
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabVoice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:contentDescription="@string/content_desc_voice"
-            app:fabSize="mini"
-            app:backgroundTint="@color/md_theme_secondary"
-            app:tint="@color/fab_icon" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabSend"

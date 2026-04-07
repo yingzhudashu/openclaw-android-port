@@ -178,6 +178,9 @@ const DEFAULT_CONFIG = {
     },
   },
   available_models: ['qwen3.5-plus', 'gpt-4o', 'claude-sonnet-4-6', 'deepseek-chat'],
+  tavily: {
+    api_key: '',
+  },
   system_prompt: '你是 OpenClaw 🦞，一个运行在 Android 手机上的 AI 个人助手。\n\n## 核心特质\n- 聪明高效，简洁直接\n- 中文优先回复，技术术语保留英文\n- 能帮忙做的事直接做，不反复确认\n- 有自己的观点，不是搜索引擎\n\n## 能力\n- 日常问答、知识查询、文本创作\n- 代码编写与调试\n- 翻译、总结、分析\n- 数学计算与逻辑推理\n\n## 工具使用规则\n- 查新闻/实时信息 → 优先用 web_search（Tavily），速度快且稳定\n- web_fetch 仅用于读取已知 URL 的内容\n- 如果工具调用超时，直接告知用户结果，不要反复重试\n- 同一工具最多重试 1 次\n\n## 风格\n- 简洁但不敷衍，详细但不啰嗦\n- 适当使用 emoji，但克制\n- 重要信息用加粗标注\n- 回复格式适合手机阅读（短段落）',
   gateway: {
     port: 18789,
@@ -220,6 +223,7 @@ function loadConfig() {
     if (!config.embedding) config.embedding = DEFAULT_CONFIG.embedding;
     if (!config.embedding_providers) config.embedding_providers = DEFAULT_CONFIG.embedding_providers;
     if (!config.available_models) config.available_models = DEFAULT_CONFIG.available_models;
+    if (!config.tavily) config.tavily = DEFAULT_CONFIG.tavily;
     // Refresh provider models from defaults (user may have old cached models lists)
     if (config.providers && DEFAULT_CONFIG.providers) {
       for (const pName of Object.keys(DEFAULT_CONFIG.providers)) {
@@ -240,7 +244,7 @@ function saveConfig() {
 
 function updateConfig(patch) {
   // Only allow updating known safe keys
-  const ALLOWED = ['model', 'system_prompt', 'providers', 'gateway', 'max_agent_steps', 'embedding', 'memory_mode', 'available_models', 'default_provider'];
+  const ALLOWED = ['model', 'system_prompt', 'providers', 'gateway', 'max_agent_steps', 'embedding', 'memory_mode', 'available_models', 'default_provider', 'tavily'];
   for (const key of Object.keys(patch)) {
     if (ALLOWED.includes(key)) {
       if (key === 'providers' && typeof patch.providers === 'object') {
@@ -2354,7 +2358,8 @@ const { exec: execCmd, execSync } = require('child_process');
 // Maximum agent loop iterations to prevent infinite loops (configurable via openclaw.json)
 const DEFAULT_MAX_AGENT_STEPS = 25;
 const TOOL_EXEC_TIMEOUT = 30000; // 30s per tool call
-const TAVILY_API_KEY = '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';
+const TAVILY_API_KEY_DEFAULT = '';
+function getTavilyKey() { return (config.tavily && config.tavily.api_key) || TAVILY_API_KEY_DEFAULT; }
 const BROWSER_BRIDGE_URL = 'http://127.0.0.1:18790';
 
 // ─── Tool Definitions (OpenAI function calling format) ───────────────────────
@@ -2763,7 +2768,7 @@ async function executeTool(name, args) {
         const maxResults = args.max_results || 5;
         // Tavily requires API key in body
         const reqBody = JSON.stringify({
-          api_key: TAVILY_API_KEY,
+          api_key: getTavilyKey(),
           query,
           max_results: maxResults,
           search_depth: 'basic',

@@ -1097,6 +1097,18 @@ class ChatFragment : Fragment() {
                                     currentReasoning = json.optString("reasoning", currentReasoning)
                                 }
                                 
+                                // Handle error from Gateway
+                                if (json.has("error")) {
+                                    val errorCode = json.optString("error", "unknown")
+                                    val errorMsg = when (errorCode) {
+                                        "missing_api_key" -> "未配置 API Key，请在设置中添加"
+                                        "unknown_model" -> "未找到模型，请检查配置"
+                                        "rate_limited" -> "请求频率过高，请稍后重试"
+                                        else -> json.optString("message", errorCode)
+                                    }
+                                    throw Exception(errorMsg)
+                                }
+                                
                                 if (json.has("choices")) {
                                     val choices = json.getJSONArray("choices")
                                     if (choices.length() > 0) {

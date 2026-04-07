@@ -1,5 +1,5 @@
 ﻿{
-  "version": "2026.4.7.2-android",
+  "version": "2026.4.7.3-android",
   "model": "qwen3.5-plus",
   "providers": {
     "bailian": {

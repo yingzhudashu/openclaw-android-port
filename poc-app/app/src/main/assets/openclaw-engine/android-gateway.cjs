@@ -1038,8 +1038,8 @@ route('GET', '/api/doctor', (req, res) => {
   }
   
   // Check sessions
-  const sessions = Object.keys(sessionsData.sessions || {});
-  checks.push({ name: 'sessions', status: 'ok', detail: `${sessions.length} sessions` });
+  const sessCount = sessions.size;
+  checks.push({ name: 'sessions', status: 'ok', detail: `${sessCount} sessions` });
   
   // Check skills
   const skills = getAvailableSkills();
@@ -1079,7 +1079,7 @@ route('GET', '/api/selftest', async (req, res) => {
 
   try { if (config.model) ok('config', 'model=' + config.model); else fail('config', 'no model'); } catch(e) { fail('config', e.message); }
   try { const p = resolveProvider(config.model); if (p && p.api_key) ok('provider', p.provider); else fail('provider', 'no key'); } catch(e) { fail('provider', e.message); }
-  try { ok('sessions', Object.keys(sessionsData.sessions || {}).length + ' sessions'); } catch(e) { fail('sessions', e.message); }
+  try { ok('sessions', sessions.size + ' sessions'); } catch(e) { fail('sessions', e.message); }
   try { const sid = createSession('selftest'); if (sid) { ok('create_session', sid); deleteSession(sid); } else fail('create_session', 'no id'); } catch(e) { fail('create_session', e.message); }
   try { ok('memory', readMemory().length + ' chars'); } catch(e) { fail('memory', e.message); }
   try { ok('skills', getAvailableSkills().length + ' installed'); } catch(e) { fail('skills', e.message); }
@@ -1315,7 +1315,7 @@ route('GET', '/api/memory/search', (req, res) => {
   } catch (_) {}
   
   // Search in memory/ directory
-  const memDir = path.join(WORKSPACE_DIR, 'memory');
+  const memDir = path.join(BASE_DIR, 'memory');
   try {
     if (fs.existsSync(memDir)) {
       const walk = (dir) => {
@@ -1327,7 +1327,7 @@ route('GET', '/api/memory/search', (req, res) => {
           try {
             const content = fs.readFileSync(fp, 'utf-8');
             const lines = content.split('\n');
-            const relPath = path.relative(WORKSPACE_DIR, fp).replace(/\\\\/g, '/');
+            const relPath = path.relative(BASE_DIR, fp).replace(/\\\\/g, '/');
             lines.forEach((line, i) => {
               if (line.toLowerCase().includes(query)) {
                 results.push({ file: relPath, line: i + 1, text: line.trim() });

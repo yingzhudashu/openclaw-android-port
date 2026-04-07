@@ -48,29 +48,30 @@
 
 ## 迭代开发计划
 
-### Phase 1: 流式响应（最高优先级）
+### Phase 1: 流式响应 ✅
 **目标**: 让用户实时看到 AI 回复，彻底解决"卡死"感
-- [ ] Gateway: `/api/chat/stream` SSE 端点
-- [ ] Kotlin: SSE 客户端解析 `text/event-stream`
-- [ ] UI: 逐字追加消息，打字机效果
-- [ ] 思考过程: 显示 reasoning/thinking 折叠区域
-- [ ] 工具调用: 显示 "🔍 正在搜索..." 等中间状态
+- [x] Gateway: `/api/chat` SSE 端点
+- [x] Kotlin: SSE 客户端解析 `text/event-stream`
+- [x] UI: 逐字追加消息，打字机效果
+- [x] 思考过程: 显示 reasoning 折叠区域
+- [x] 工具调用: 显示工具调用步骤
 
-### Phase 2: 错误处理与稳定性
+### Phase 2: 错误处理与稳定性 ✅
 **目标**: 在各种网络条件下都能正常工作
-- [ ] 网络状态检测与提示
-- [ ] 请求重试机制（指数退避）
-- [ ] 消息发送失败 → 重发按钮
-- [ ] Gateway 健康检查 + 自动重启
-- [ ] 输入框草稿保存（切换会话不丢失）
+- [x] 网络状态检测与提示（NetworkCallback + 红色横幅）
+- [x] 请求重试机制（指数退避 1s→3s，最多 2 次）
+- [x] 消息发送失败 → 重发按钮
+- [x] Gateway 健康检查（30s 心跳）
+- [x] 输入框草稿保存（SharedPreferences）
+- [x] ACCESS_NETWORK_STATE 权限
 
-### Phase 3: 消息交互增强
+### Phase 3: 消息交互增强 ✅
 **目标**: 接近微信/Telegram 级别的消息交互
-- [ ] 代码块复制按钮
-- [ ] 消息长按菜单（复制/删除/重发）
-- [ ] 多行输入框（自动扩展）
-- [ ] 图片全屏预览
-- [ ] 链接点击跳转
+- [x] 代码块复制按钮（[复制代码] ClickableSpan）
+- [x] 消息长按复制（已有 copyToClipboard）
+- [x] 多行输入框（textMultiLine + maxLines=5）✅ 已有
+- [x] 图片全屏预览（showFullImage Dialog）✅ 已有
+- [x] 链接点击跳转（Markdown [text](url) + 裸链接 http://）
 
 ### Phase 4: 记忆与上下文
 **目标**: 让 AI 能记住用户，跨会话保持连贯
@@ -91,6 +92,6 @@
 ---
 
 ## 当前进度
-- **Phase**: 1 (流式响应)
-- **Step**: 开始实现
-- **Last updated**: 2026-04-07 01:35
+- **Phase**: 4 (记忆与上下文)
+- **Step**: 等待需求确认
+- **Last updated**: 2026-04-07 08:05

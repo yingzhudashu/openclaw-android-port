@@ -127,6 +127,18 @@
             android:textSize="10sp"
             android:textColor="@color/timestamp_light" />
 
+        <TextView
+            android:id="@+id/tvRetryHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="6dp"
+            android:text="@string/chat_send_failed_retry"
+            android:textSize="12sp"
+            android:textColor="#F44336"
+            android:visibility="gone" />
+
     </LinearLayout>
 
     <!-- AI 消息（靠左） -->

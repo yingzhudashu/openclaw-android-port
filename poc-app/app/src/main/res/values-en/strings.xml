@@ -286,4 +286,14 @@
     <string name="status_cache_cleared">[System] Cache cleared</string>
     <string name="status_cache_failed">[System] Clear failed: %s</string>
     <string name="status_unknown">Unknown</string>
+
+    <!-- Phase 2: Error Handling & Stability -->
+    <string name="network_disconnected">⚠️ Network Disconnected</string>
+    <string name="network_offline_hint">Network unavailable, please check your connection</string>
+    <string name="chat_send_failed_retry">⚠️ Send failed · Tap to retry</string>
+    <string name="engine_disconnected">⚠️ Engine disconnected</string>
+
+    <!-- Phase 3: Message Interaction -->
+    <string name="copy_code">Copy code</string>
+    <string name="link_open_failed">Cannot open link</string>
 </resources>

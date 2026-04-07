@@ -8,6 +8,8 @@ import android.graphics.Typeface
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.*
+import android.text.method.LinkMovementMethod
+import android.text.TextPaint
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
@@ -43,7 +45,8 @@ data class ChatMessage(
     val fileSize: Long = 0,
     val toolLog: String? = null,
     val steps: Int = 0,
-    val sessionId: String? = null
+    val sessionId: String? = null,
+    val sendFailed: Boolean = false
 )
 
 /**
@@ -56,6 +59,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     private val messages = mutableListOf<ChatMessage>()
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val expandedToolLogs = mutableSetOf<Int>() // Track expanded tool logs
+    var onRetryClick: ((Int, ChatMessage) -> Unit)? = null
 
     fun addMessage(message: ChatMessage) {
         messages.add(message)
@@ -98,6 +102,27 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
 
     fun getMessageCount(): Int = messages.size
 
+    fun getMessageAt(position: Int): ChatMessage? {
+        return messages.getOrNull(position)
+    }
+
+    fun removeMessageAt(position: Int) {
+        if (position in messages.indices) {
+            messages.removeAt(position)
+            notifyItemRemoved(position)
+        }
+    }
+
+    fun markLastUserMessageFailed() {
+        for (i in messages.indices.reversed()) {
+            if (messages[i].isUser) {
+                messages[i] = messages[i].copy(sendFailed = true)
+                notifyItemChanged(i)
+                return
+            }
+        }
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_message, parent, false)
@@ -115,6 +140,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val layoutUser: View = itemView.findViewById(R.id.layoutUser)
         private val tvUserMessage: TextView = itemView.findViewById(R.id.tvUserMessage)
         private val tvUserTime: TextView = itemView.findViewById(R.id.tvUserTime)
+        private val tvRetryHint: TextView = itemView.findViewById(R.id.tvRetryHint)
         private val ivUserImage: ImageView = itemView.findViewById(R.id.ivUserImage)
         private val cardUserImage: View = itemView.findViewById(R.id.cardUserImage)
         private val cardUserFile: View = itemView.findViewById(R.id.cardUserFile)
@@ -195,6 +221,15 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                     cardUser.visibility = View.GONE
                 }
 
+                // Retry hint for failed messages
+                if (message.sendFailed) {
+                    tvRetryHint.visibility = View.VISIBLE
+                    tvRetryHint.setOnClickListener { onRetryClick?.invoke(position, message) }
+                } else {
+                    tvRetryHint.visibility = View.GONE
+                    tvRetryHint.setOnClickListener(null)
+                }
+
                 // 长按复制
                 itemView.setOnLongClickListener {
                     copyToClipboard(itemView.context, message.content)
@@ -207,6 +242,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
 
                 // Markdown 渲染
                 tvAiMessage.text = renderMarkdown(itemView.context, message.content)
+                tvAiMessage.movementMethod = LinkMovementMethod.getInstance()
                 tvAiTime.text = timeStr
 
                 // AI 名字和头像（每个会话独立）
@@ -319,6 +355,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         val codeBlockText = ContextCompat.getColor(context, R.color.code_block_text)
         val inlineCodeBg = ContextCompat.getColor(context, R.color.code_bg)
         val inlineCodeText = ContextCompat.getColor(context, R.color.code_text)
+        val linkColor = ContextCompat.getColor(context, R.color.md_theme_primary)
 
         var inCodeBlock = false
         val codeBlockContent = StringBuilder()
@@ -329,8 +366,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                 if (inCodeBlock) {
                     // End code block
                     inCodeBlock = false
+                    val codeContent = codeBlockContent.toString().trimEnd()
                     val start = ssb.length
-                    ssb.append(codeBlockContent.toString().trimEnd())
+                    ssb.append(codeContent)
                     val end = ssb.length
                     ssb.setSpan(BackgroundColorSpan(codeBlockBg), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     ssb.setSpan(ForegroundColorSpan(codeBlockText), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -338,6 +376,20 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                     ssb.setSpan(RelativeSizeSpan(0.88f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     codeBlockContent.clear()
                     ssb.append("\n")
+                    // 复制按钮
+                    val copyStart = ssb.length
+                    ssb.append("[${context.getString(R.string.copy_code)}]")
+                    val copyEnd = ssb.length
+                    ssb.setSpan(object : ClickableSpan() {
+                        override fun onClick(widget: View) {
+                            copyToClipboard(context, codeContent)
+                        }
+                        override fun updateDrawState(ds: TextPaint) {
+                            super.updateDrawState(ds)
+                            ds.color = ContextCompat.getColor(context, R.color.md_theme_primary)
+                            ds.isUnderlineText = true
+                        }
+                    }, copyStart, copyEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 } else {
                     // Start code block
                     inCodeBlock = true
@@ -381,7 +433,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
             val trimmed = line.trimStart()
             if (trimmed.startsWith("- ") || trimmed.startsWith("• ") || trimmed.startsWith("* ")) {
                 ssb.append("  • ")
-                renderInline(ssb, trimmed.substring(2), inlineCodeBg, inlineCodeText)
+                renderInline(ssb, trimmed.substring(2), inlineCodeBg, inlineCodeText, linkColor)
                 ssb.append("\n")
                 continue
             }
@@ -390,23 +442,39 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
             val numMatch = Regex("^(\\d+)[.)\\s]\\s*(.*)").find(trimmed)
             if (numMatch != null) {
                 ssb.append("  ${numMatch.groupValues[1]}. ")
-                renderInline(ssb, numMatch.groupValues[2], inlineCodeBg, inlineCodeText)
+                renderInline(ssb, numMatch.groupValues[2], inlineCodeBg, inlineCodeText, linkColor)
                 ssb.append("\n")
                 continue
             }
 
             // Normal line with inline formatting
-            renderInline(ssb, line, inlineCodeBg, inlineCodeText)
+            renderInline(ssb, line, inlineCodeBg, inlineCodeText, linkColor)
             ssb.append("\n")
         }
 
         // Handle unclosed code block
         if (inCodeBlock && codeBlockContent.isNotEmpty()) {
+            val codeContent = codeBlockContent.toString().trimEnd()
             val start = ssb.length
-            ssb.append(codeBlockContent.toString().trimEnd())
+            ssb.append(codeContent)
             val end = ssb.length
             ssb.setSpan(BackgroundColorSpan(codeBlockBg), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             ssb.setSpan(TypefaceSpan("monospace"), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append("\n")
+            // 复制按钮（未闭合代码块）
+            val copyStart = ssb.length
+            ssb.append("[${context.getString(R.string.copy_code)}]")
+            val copyEnd = ssb.length
+            ssb.setSpan(object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    copyToClipboard(context, codeContent)
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.color = ContextCompat.getColor(context, R.color.md_theme_primary)
+                    ds.isUnderlineText = true
+                }
+            }, copyStart, copyEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             ssb.append("\n")
         }
 
@@ -419,9 +487,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     }
 
     /**
-     * 渲染行内格式：**加粗**、`代码`、_斜体_
+     * 渲染行内格式：**加粗**、`代码`、_斜体_、[链接](url)
      */
-    private fun renderInline(ssb: SpannableStringBuilder, text: String, codeBg: Int, codeText: Int) {
+    private fun renderInline(ssb: SpannableStringBuilder, text: String, codeBg: Int, codeText: Int, linkColor: Int) {
         var i = 0
         while (i < text.length) {
             when {
@@ -454,11 +522,68 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                         i++
                     }
                 }
+                // Markdown 链接 [text](url)
+                text[i] == '[' -> {
+                    val closeBracket = text.indexOf(']', i + 1)
+                    if (closeBracket > 0 && closeBracket + 1 < text.length && text[closeBracket + 1] == '(') {
+                        val closeParen = text.indexOf(')', closeBracket + 2)
+                        if (closeParen > 0) {
+                            val linkText = text.substring(i + 1, closeBracket)
+                            val url = text.substring(closeBracket + 2, closeParen)
+                            val start = ssb.length
+                            ssb.append(linkText)
+                            ssb.setSpan(object : ClickableSpan() {
+                                override fun onClick(widget: View) {
+                                    openLink(widget.context, url)
+                                }
+                                override fun updateDrawState(ds: TextPaint) {
+                                    super.updateDrawState(ds)
+                                    ds.color = linkColor
+                                    ds.isUnderlineText = true
+                                }
+                            }, start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            i = closeParen + 1
+                            continue
+                        }
+                    }
+                    ssb.append(text[i])
+                    i++
+                }
+                // 裸链接 http:// 或 https://
+                text.substring(i).startsWith("http://") || text.substring(i).startsWith("https://") -> {
+                    val end = text.indexOf(' ', i).takeIf { it > 0 } ?: text.length
+                    val url = text.substring(i, end)
+                    val start = ssb.length
+                    ssb.append(url)
+                    ssb.setSpan(object : ClickableSpan() {
+                        override fun onClick(widget: View) {
+                            openLink(widget.context, url)
+                        }
+                        override fun updateDrawState(ds: TextPaint) {
+                            super.updateDrawState(ds)
+                            ds.color = linkColor
+                            ds.isUnderlineText = true
+                        }
+                    }, start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    i = end
+                }
                 else -> {
                     ssb.append(text[i])
                     i++
                 }
             }
+        }
+    }
+
+    /**
+     * 打开链接
+     */
+    private fun openLink(context: Context, url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, context.getString(R.string.link_open_failed), Toast.LENGTH_SHORT).show()
         }
     }
 

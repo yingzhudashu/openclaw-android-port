@@ -81,6 +81,20 @@
         android:layout_height="0.5dp"
         android:background="@color/topbar_divider" />
 
+    <!-- 网络状态横幅 -->
+    <TextView
+        android:id="@+id/tvNetworkBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#F44336"
+        android:text="@string/network_disconnected"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone" />
+
     <!-- 消息列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvMessages"

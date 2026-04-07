@@ -286,4 +286,14 @@
     <string name="status_cache_cleared">[System] 缓存已清除</string>
     <string name="status_cache_failed">[System] 清除失败: %s</string>
     <string name="status_unknown">未知</string>
+
+    <!-- Phase 2: 错误处理与稳定性 -->
+    <string name="network_disconnected">⚠️ 网络已断开</string>
+    <string name="network_offline_hint">网络不可用，请检查网络连接</string>
+    <string name="chat_send_failed_retry">⚠️ 发送失败 · 点击重发</string>
+    <string name="engine_disconnected">⚠️ 引擎已断开连接</string>
+
+    <!-- Phase 3: 消息交互增强 -->
+    <string name="copy_code">复制代码</string>
+    <string name="link_open_failed">无法打开链接</string>
 </resources>

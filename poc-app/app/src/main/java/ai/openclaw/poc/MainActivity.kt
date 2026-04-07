@@ -9,6 +9,7 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.content.Intent
 
 /**
  * 主 Activity — 使用 ViewPager2 + TabLayout 管理 3 个页面
@@ -96,7 +97,32 @@ class MainActivity : AppCompatActivity() {
 
         // 自动启动引擎
         startEngine()
+
+        // Handle shortcut intents
+        handleShortcutIntent(intent)
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    private fun handleShortcutIntent(intent: Intent?) {
+        when (intent?.action) {
+            "ai.openclaw.poc.NEW_CHAT" -> {
+                viewPager.currentItem = 0 // Switch to chat tab
+                // ChatFragment will handle new session via its own logic
+            }
+            "ai.openclaw.poc.VOICE_INPUT" -> {
+                viewPager.currentItem = 0
+                // Signal to ChatFragment to start voice input
+                shortcutAction = "voice"
+            }
+        }
+    }
+
+    var shortcutAction: String? = null
 
     /**
      * 启动引擎（供 Fragment 调用）

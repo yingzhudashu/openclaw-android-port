@@ -310,4 +310,8 @@
     <string name="voice_input_hint">Speak now…</string>
     <string name="voice_not_supported">Voice input not supported</string>
     <string name="content_desc_voice">Voice input</string>
+    <string name="shortcut_new_chat">New Chat</string>
+    <string name="shortcut_new_chat_long">Start new chat</string>
+    <string name="shortcut_voice">Voice Ask</string>
+    <string name="shortcut_voice_long">Ask with voice</string>
 </resources>

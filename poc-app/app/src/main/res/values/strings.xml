@@ -310,4 +310,8 @@
     <string name="voice_input_hint">请说话…</string>
     <string name="voice_not_supported">设备不支持语音输入</string>
     <string name="content_desc_voice">语音输入</string>
+    <string name="shortcut_new_chat">新对话</string>
+    <string name="shortcut_new_chat_long">开始新对话</string>
+    <string name="shortcut_voice">语音提问</string>
+    <string name="shortcut_voice_long">用语音提问</string>
 </resources>

@@ -215,6 +215,19 @@ class ChatFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Handle shortcut actions
+        (activity as? MainActivity)?.let { main ->
+            when (main.shortcutAction) {
+                "voice" -> {
+                    main.shortcutAction = null
+                    startVoiceInput()
+                }
+            }
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         networkCallback?.let {

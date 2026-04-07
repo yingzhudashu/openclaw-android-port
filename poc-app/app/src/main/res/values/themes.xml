@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 自定义 Material 3 主题 -->
     <style name="Theme.OpenClaw" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/md_theme_primary</item>
         <item name="colorOnPrimary">@color/md_theme_on_primary</item>
         <item name="colorPrimaryContainer">@color/md_theme_primary_container</item>
         <item name="colorOnPrimaryContainer">@color/md_theme_on_primary_container</item>
-        <item name="colorSecondary">@color/md_theme_secondary</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@color/topbar_bg</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+        <item name="tabStyle">@style/OpenClawTab</item>
+    </style>
+
+    <style name="OpenClawTab" parent="Widget.Material3.TabLayout">
+        <item name="tabBackground">@color/topbar_bg</item>
+        <item name="tabTextColor">@color/tab_unselected</item>
+        <item name="tabSelectedTextColor">@color/tab_selected</item>
+        <item name="tabIndicatorColor">@color/tab_indicator</item>
     </style>
 </resources>

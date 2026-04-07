@@ -1635,7 +1635,9 @@ function buildSystemPrompt(customPrompt, sessionPrompt) {
   
   // Inject current date/time
   const now = new Date();
-  parts.push(`## Current Date & Time\n${now.toISOString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`);
+  const tzOffset = -now.getTimezoneOffset() / 60;
+  const tzStr = tzOffset >= 0 ? `UTC+${tzOffset}` : `UTC${tzOffset}`;
+  parts.push(`## Current Date & Time\n${now.toISOString()} (${tzStr})`);
 
   return parts.join('\n\n---\n\n');
 }

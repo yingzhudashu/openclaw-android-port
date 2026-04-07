@@ -11,8 +11,8 @@ android {
         applicationId = "ai.openclaw.poc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 68
-        versionName = "2.3.1"
+        versionCode = 70
+        versionName = "2.4.0"
 
         ndk {
             abiFilters += "arm64-v8a"

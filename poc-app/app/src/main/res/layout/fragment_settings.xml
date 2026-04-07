@@ -332,7 +332,7 @@
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="鈩癸笍" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="ℹ️" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_about" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvVersion" android:layout_width="wrap_content" android:layout_height="wrap_content"

@@ -139,7 +139,7 @@ class SettingsFragment : Fragment() {
             tvVersion.text = "v${info.versionName}"
         } catch (_: Exception) {}
 
-        // 显示当前语言
+        // (comment)
         val lang = LocaleHelper.getLanguage(requireContext())
         tvLangSummary.text = if (lang == "en") getString(R.string.settings_language_en) else getString(R.string.settings_language_zh)
 
@@ -182,7 +182,7 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
-        // 供应商数量
+        // (comment)
         val configured = providerConfigs.filter { it.value.first.isNotEmpty() }.size
         tvModelProviderSummary.text = getString(R.string.n_configured, configured)
         tvDefaultModelSummary.text = cachedModel.ifEmpty { getString(R.string.not_set) }
@@ -209,7 +209,7 @@ class SettingsFragment : Fragment() {
             getString(R.string.settings_memory_mode_basic)
         }
 
-        // 同步模型/供应商列表到 SharedPreferences，供 MessageAdapter 头像点击读取
+        // Sync to SharedPreferences for MessageAdapter
         syncModelProviderListsToPrefs(config)
     }
 
@@ -274,7 +274,7 @@ class SettingsFragment : Fragment() {
         } catch (_: Exception) { tvSkillsCount.text = getString(R.string.n_items, 0) }
     }
 
-    // ─── Model + Provider (合并) ────────────────────────────────────────
+    // Model + Provider settings
 
     private fun updateModelProviderSummary() {
         val configured = providerConfigs.filter { it.value.first.isNotEmpty() }.size
@@ -397,7 +397,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Provider ────────────────────────────────────────────────────────
+    // Model + Provider settings
 
     private fun showProviderEditor() {
         val allProviders = (defaultProviders.toList() + providerConfigs.keys).distinct().sorted()
@@ -626,7 +626,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Skills ──────────────────────────────────────────────────────────
+    // (settings handler)
 
     private fun showSkillsList() {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -743,7 +743,7 @@ class SettingsFragment : Fragment() {
             .setNegativeButton(R.string.cancel, null).show()
     }
 
-    // ─── Memory Mode ──────────────────────────────────────────────
+    // (settings handler)
 
     private fun showMemoryModePicker() {
         val modes = arrayOf(
@@ -780,7 +780,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Embedding Model ──────────────────────────────────────────
+    // Model + Provider settings
 
     private fun showEmbeddingEditor() {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -1041,7 +1041,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Max Steps ─────────────────────────────────────────────────
+    // (settings handler)
 
     private fun showMaxStepsEditor() {
         val presets = arrayOf(10, 15, 20, 25, 30, 50)
@@ -1095,7 +1095,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Backup / Restore ───────────────────────────────────────────
+    // (settings handler)
 
     private fun performBackup() {
         snack(getString(R.string.settings_backup_creating))
@@ -1227,7 +1227,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // Restore file picker — open to Downloads/OpenClaw by default
+    // (settings handler)
     private val restoreFileLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri ->
@@ -1333,7 +1333,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ─── Language ────────────────────────────────────────────────────────
+    // (settings handler)
 
     private fun showLanguagePicker() {
         val options = arrayOf(getString(R.string.settings_language_zh), getString(R.string.settings_language_en))
@@ -1348,7 +1348,7 @@ class SettingsFragment : Fragment() {
                 if (newLang != current) {
                     LocaleHelper.setLanguage(requireContext(), newLang)
                     dialog.dismiss()
-                    // 重启 Activity 使语言生效
+                    // (comment)
                     activity?.let { LocaleHelper.restartActivity(it) }
                 } else {
                     dialog.dismiss()
@@ -1357,7 +1357,7 @@ class SettingsFragment : Fragment() {
             .setNegativeButton(R.string.cancel, null).show()
     }
 
-    // ─── System ──────────────────────────────────────────────────────────
+    // (settings handler)
 
     private fun clearEngineCache() {
         AlertDialog.Builder(requireContext())
@@ -1373,7 +1373,7 @@ class SettingsFragment : Fragment() {
             .setNegativeButton(R.string.cancel, null).show()
     }
 
-    // ─── HTTP ────────────────────────────────────────────────────────────
+    // (settings handler)
 
     private fun snack(msg: String) { view?.let { Snackbar.make(it, msg, Snackbar.LENGTH_SHORT).show() } }
 

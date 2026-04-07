@@ -307,4 +307,7 @@
     <!-- Phase 5: 深色模式 -->
     <string name="settings_group_appearance">外观</string>
     <string name="settings_dark_mode">深色模式</string>
+    <string name="voice_input_hint">请说话…</string>
+    <string name="voice_not_supported">设备不支持语音输入</string>
+    <string name="content_desc_voice">语音输入</string>
 </resources>

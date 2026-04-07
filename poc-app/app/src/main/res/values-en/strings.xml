@@ -307,4 +307,7 @@
     <!-- Phase 5: Dark Mode -->
     <string name="settings_group_appearance">Appearance</string>
     <string name="settings_dark_mode">Dark Mode</string>
+    <string name="voice_input_hint">Speak now…</string>
+    <string name="voice_not_supported">Voice input not supported</string>
+    <string name="content_desc_voice">Voice input</string>
 </resources>

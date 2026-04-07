@@ -39,6 +39,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 
 class ChatFragment : Fragment() {
 
@@ -50,6 +52,8 @@ class ChatFragment : Fragment() {
     private lateinit var rvMessages: RecyclerView
     private lateinit var etMessage: EditText
     private lateinit var fabSend: FloatingActionButton
+    private lateinit var fabVoice: FloatingActionButton
+    private val VOICE_REQUEST_CODE = 9001
     private lateinit var tvSessionId: TextView
     private lateinit var tvSessionTitle: TextView
     private lateinit var tvToolCount: TextView
@@ -119,6 +123,7 @@ class ChatFragment : Fragment() {
         rvMessages = view.findViewById(R.id.rvMessages)
         etMessage = view.findViewById(R.id.etMessage)
         fabSend = view.findViewById(R.id.fabSend)
+        fabVoice = view.findViewById(R.id.fabVoice)
         tvSessionId = view.findViewById(R.id.tvSessionId)
         tvSessionTitle = view.findViewById(R.id.tvSessionTitle)
         tvToolCount = view.findViewById(R.id.tvToolCount)
@@ -130,6 +135,7 @@ class ChatFragment : Fragment() {
         rvMessages.adapter = messageAdapter
 
         fabSend.setOnClickListener { sendMessage() }
+        fabVoice.setOnClickListener { startVoiceInput() }
         etMessage.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) { sendMessage(); true } else false
         }
@@ -333,6 +339,31 @@ class ChatFragment : Fragment() {
     }
 
     // ─── Send Message ────────────────────────────────────────────────────────
+
+    private fun startVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_input_hint))
+        }
+        try {
+            startActivityForResult(intent, VOICE_REQUEST_CODE)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), getString(R.string.voice_not_supported), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == VOICE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+            val result = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            result?.firstOrNull()?.let { text ->
+                etMessage.setText(text)
+                etMessage.setSelection(text.length)
+            }
+        }
+    }
 
     private fun sendMessage() {
         val text = etMessage.text.toString().trim()

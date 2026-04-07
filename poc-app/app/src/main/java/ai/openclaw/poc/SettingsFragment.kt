@@ -122,6 +122,14 @@ class SettingsFragment : Fragment() {
         view.findViewById<View>(R.id.cellLanguage).setOnClickListener { showLanguagePicker() }
         view.findViewById<View>(R.id.cellMaxSteps).setOnClickListener { showMaxStepsEditor() }
 
+        // Heartbeat toggle
+        val switchHeartbeat = view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchHeartbeat)
+        switchHeartbeat.isChecked = HeartbeatWorker.isEnabled(requireContext())
+        switchHeartbeat.setOnCheckedChangeListener { _, isChecked ->
+            HeartbeatWorker.setEnabled(requireContext(), isChecked)
+            snack(if (isChecked) getString(R.string.heartbeat_enabled) else getString(R.string.heartbeat_disabled))
+        }
+
         tvMaxStepsSummary = view.findViewById(R.id.tvMaxStepsSummary)
         tvEmbeddingSummary = view.findViewById(R.id.tvEmbeddingSummary)
         tvMemoryModeSummary = view.findViewById(R.id.tvMemoryModeSummary)

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-04-07
+
+### Added
+- **💓 Heartbeat Worker** — WorkManager-based periodic heartbeat (30min), mirrors desktop HEARTBEAT.md polling
+- **🔍 Memory Search API** — Gateway endpoint `/api/memory/search?q=` for grep-based memory search
+- **Heartbeat Toggle** — Settings switch to enable/disable heartbeat monitoring
+- **Notification Alerts** — Heartbeat results pushed when AI has something to report
+
+### Improved
+- Gateway: added memory search endpoint
+- Settings: heartbeat monitoring toggle
+
 ## [1.4.0] - 2026-04-07
 
 ### Added

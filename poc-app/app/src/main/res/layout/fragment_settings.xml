@@ -340,6 +340,22 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Heartbeat Toggle -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:background="@color/bg_card"
+            android:layout_marginTop="8dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="💓" android:textSize="18sp" android:layout_marginEnd="12dp" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="@string/settings_heartbeat" android:textSize="16sp" android:textColor="@color/text_primary" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchHeartbeat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
         <!-- ═══ Appearance ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_appearance" android:textSize="13sp" android:textColor="@color/group_title"

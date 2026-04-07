@@ -1158,7 +1158,53 @@ route('POST', '/api/memory', async (req, res) => {
   }
 });
 
-// --- Cron ---
+// --- Memory Search (simple grep) ---
+route('GET', '/api/memory/search', (req, res) => {
+  const url = new URL(req.url, 'http://localhost');
+  const query = (url.searchParams.get('q') || '').toLowerCase().trim();
+  if (!query) return sendJSON(res, 200, { results: [], query: '' });
+  
+  const results = [];
+  // Search in MEMORY.md
+  try {
+    const memContent = readMemory();
+    const lines = memContent.split('\n');
+    lines.forEach((line, i) => {
+      if (line.toLowerCase().includes(query)) {
+        results.push({ file: 'MEMORY.md', line: i + 1, text: line.trim() });
+      }
+    });
+  } catch (_) {}
+  
+  // Search in memory/ directory
+  const memDir = path.join(WORKSPACE_DIR, 'memory');
+  try {
+    if (fs.existsSync(memDir)) {
+      const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir)) {
+          const fp = path.join(dir, entry);
+          const st = fs.statSync(fp);
+          if (st.isDirectory()) { walk(fp); continue; }
+          if (!entry.endsWith('.md')) continue;
+          try {
+            const content = fs.readFileSync(fp, 'utf-8');
+            const lines = content.split('\n');
+            const relPath = path.relative(WORKSPACE_DIR, fp).replace(/\\\\/g, '/');
+            lines.forEach((line, i) => {
+              if (line.toLowerCase().includes(query)) {
+                results.push({ file: relPath, line: i + 1, text: line.trim() });
+              }
+            });
+          } catch (_) {}
+        }
+      };
+      walk(memDir);
+    }
+  } catch (_) {}
+  
+  sendJSON(res, 200, { results: results.slice(0, 100), query, total: results.length });
+});
+
 route('GET', '/api/cron', (req, res) => {
   sendJSON(res, 200, { jobs: listCronJobs() });
 });

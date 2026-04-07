@@ -335,4 +335,6 @@
     <string name="cron_delete_confirm">Delete this scheduled task?</string>
     <string name="cron_notification_channel">Scheduled Tasks</string>
     <string name="cron_notification_desc">Results from scheduled AI tasks</string>
+    <string name="heartbeat_enabled">Heartbeat enabled</string>
+    <string name="heartbeat_disabled">Heartbeat disabled</string>
 </resources>

@@ -335,4 +335,6 @@
     <string name="cron_delete_confirm">确认删除此定时任务？</string>
     <string name="cron_notification_channel">定时任务通知</string>
     <string name="cron_notification_desc">定时任务执行结果推送</string>
+    <string name="heartbeat_enabled">心跳监控已开启</string>
+    <string name="heartbeat_disabled">心跳监控已关闭</string>
 </resources>

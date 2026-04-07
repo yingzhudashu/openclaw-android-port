@@ -190,9 +190,27 @@ let config = {};
 function loadConfig() {
   config = safeReadJSON(CONFIG_PATH, null);
   if (!config) {
-    config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-    safeWriteJSON(CONFIG_PATH, config);
-    logger.info('Config', 'Created default config at ' + CONFIG_PATH);
+    // Before creating default config, try to read existing file as raw text
+    // (in case JSON parse failed but file has valid data)
+    let rescued = false;
+    try {
+      const raw = fs.readFileSync(CONFIG_PATH, 'utf-8').trim();
+      if (raw && raw.includes('api_key')) {
+        // Try to fix common JSON issues and re-parse
+        const fixed = raw.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+        const parsed = JSON.parse(fixed);
+        if (parsed && parsed.providers) {
+          config = parsed;
+          rescued = true;
+          logger.info('Config', 'Rescued config from ' + CONFIG_PATH);
+        }
+      }
+    } catch (_) {}
+    if (!rescued) {
+      config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      safeWriteJSON(CONFIG_PATH, config);
+      logger.info('Config', 'Created default config at ' + CONFIG_PATH);
+    }
   } else {
     // Merge missing defaults (shallow)
     if (!config.version) config.version = VERSION;

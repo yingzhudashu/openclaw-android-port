@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-07
+
+### Added
+- **Dark Mode** — Full dark theme with toggle in Settings, 106 semantic color replacements, DayNight support
+- **Voice Input** — Microphone button next to send, uses Android SpeechRecognizer
+- **App Shortcuts** — Long-press app icon for "New Chat" and "Voice Ask" shortcuts
+- **MEMORY.md Editor** — New Memory section in Settings for editing long-term memory
+- **Clear Context** — Third option in session menu to clear conversation context
+- **RECORD_AUDIO permission** for voice input
+
+### Changed
+- 106 hardcoded colors replaced with semantic color resources for theme support
+- Night mode colors for all UI elements
+
 ## [1.1.0] - 2026-04-07
 
 ### Added

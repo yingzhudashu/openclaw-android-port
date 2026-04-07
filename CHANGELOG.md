@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-04-07
+
+### ⭐ CORE: Agent Stream (SSE + Tool Loop)
+This is the most critical alignment with desktop OpenClaw.
+
+- **All messages now use `/api/agent/chat` with streaming**
+  - Previously: regular chat used `/api/chat` (no tools), only file analysis used agent
+  - Now: every message goes through the agent loop with 19 tools available
+- **`agentChatStream()`** — New Gateway function combining SSE streaming with tool call loop
+  - LLM responses stream in real-time via SSE
+  - Tool calls detected from streaming chunks, executed server-side
+  - `event: tool_call` / `event: tool_result` / `event: done` SSE events
+- **`streamLLMWithTools()`** — Streaming LLM call that accumulates tool_calls from deltas
+- **Android client updated** to parse tool_call/tool_result events
+  - Shows "🔧 Calling `tool_name`..." during execution
+  - Shows "✅ `tool_name` done" on completion
+  - Final response cleaned of tool indicators
+
+### Available Tools (19)
+web_search, web_fetch, exec, read_file, write_file, list_files, memory_read, memory_write, device_info, get_weather, browser_navigate, browser_content, browser_eval, browser_screenshot, browser_click, browser_type, news_summary, skill_search, skill_install
+
 ## [1.6.0] - 2026-04-07
 
 ### Added

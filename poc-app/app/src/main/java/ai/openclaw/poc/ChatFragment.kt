@@ -968,12 +968,12 @@ class ChatFragment : Fragment() {
         var lastException: Exception? = null
         for (attempt in 0..retryDelays.size) {
             try {
-                val url = URL("$BASE_URL/api/chat")
+                val url = URL("$BASE_URL/api/agent/chat")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 conn.setRequestProperty("Accept", "text/event-stream")
-                conn.connectTimeout = 30000; conn.readTimeout = 300000; conn.doOutput = true
+                conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true
                 val body = JSONObject().apply {
                     put("message", message)
                     if (sid.isNotEmpty()) put("session_id", sid)
@@ -1003,10 +1003,19 @@ class ChatFragment : Fragment() {
                     var currentReasoning = ""
                     
                     var line: String?
+                    var currentEvent = "" // Track SSE event type
                     while (reader.readLine().also { line = it } != null) {
                         val trimmed = line?.trim() ?: continue
                         
-                        if (trimmed.isEmpty()) continue
+                        if (trimmed.isEmpty()) {
+                            currentEvent = "" // Reset event on blank line
+                            continue
+                        }
+                        
+                        if (trimmed.startsWith("event: ")) {
+                            currentEvent = trimmed.substringAfter("event: ").trim()
+                            continue
+                        }
                         
                         if (trimmed == "data: [DONE]") {
                             break
@@ -1017,6 +1026,47 @@ class ChatFragment : Fragment() {
                             
                             try {
                                 val json = JSONObject(data)
+                                
+                                // Handle agent stream events
+                                when (currentEvent) {
+                                    "tool_call" -> {
+                                        val toolName = json.optString("name", "")
+                                        if (toolName.isNotEmpty()) {
+                                            accumulated.append("\n🔧 调用 `$toolName`...")
+                                            onChunk(accumulated.toString())
+                                        }
+                                        continue
+                                    }
+                                    "tool_result" -> {
+                                        val toolName = json.optString("name", "")
+                                        val preview = json.optString("preview", "").take(100)
+                                        if (toolName.isNotEmpty()) {
+                                            // Replace the "calling" line with result
+                                            val s = accumulated.toString()
+                                            val callLine = "\n🔧 调用 `$toolName`..."
+                                            if (s.endsWith(callLine)) {
+                                                accumulated.setLength(accumulated.length - callLine.length)
+                                            }
+                                            accumulated.append("\n✅ `$toolName` 完成\n")
+                                            onChunk(accumulated.toString())
+                                        }
+                                        continue
+                                    }
+                                    "done" -> {
+                                        currentSessionId = json.optString("session_id", currentSessionId)
+                                        currentModel = json.optString("model", currentModel)
+                                        val steps = json.optInt("steps", 0)
+                                        if (steps > 0) {
+                                            // Clean up tool log lines for final display
+                                            val content = accumulated.toString()
+                                            val cleanContent = content.replace(Regex("\n[🔧✅][^\n]*"), "")
+                                            accumulated.setLength(0)
+                                            accumulated.append(cleanContent.trimStart())
+                                            onChunk(accumulated.toString())
+                                        }
+                                        break
+                                    }
+                                }
                                 
                                 if (json.has("session_id")) {
                                     currentSessionId = json.optString("session_id", currentSessionId)

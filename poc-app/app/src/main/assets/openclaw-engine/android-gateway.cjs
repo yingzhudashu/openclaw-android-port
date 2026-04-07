@@ -3090,6 +3090,197 @@ async function agentChat(opts) {
   };
 }
 
+// ─── Agent Chat Stream (SSE + tool loop) ─────────────────────────────────────
+async function agentChatStream(opts, res) {
+  const provInfo = resolveProvider(opts.model);
+  if (!provInfo) {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+    res.write('data: ' + JSON.stringify({ error: 'unknown_model' }) + '\n\n');
+    res.end(); return;
+  }
+  if (!provInfo.api_key) {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+    res.write('data: ' + JSON.stringify({ error: 'missing_api_key' }) + '\n\n');
+    res.end(); return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+
+  const messages = [];
+  if (opts.system_prompt) {
+    messages.push({ role: 'system', content: opts.system_prompt + '\n\n你有以下工具可以使用。当需要搜索信息、执行命令、读写文件时，主动调用工具。不要猜测答案，用工具获取真实数据。' });
+  }
+  if (Array.isArray(opts.messages)) {
+    for (const m of opts.messages) {
+      const msg = { role: m.role, content: m.content };
+      if (m.image_base64 && m.role === 'user') {
+        msg.content = [
+          { type: 'text', text: m.content || '请分析这张图片' },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${m.image_base64}` } }
+        ];
+      }
+      messages.push(msg);
+    }
+  }
+
+  const baseUrl = provInfo.base_url.replace(/\/+$/, '');
+  let steps = 0;
+  const toolLog = [];
+  const maxSteps = (config.max_agent_steps && Number.isInteger(config.max_agent_steps) && config.max_agent_steps > 0)
+    ? config.max_agent_steps : DEFAULT_MAX_AGENT_STEPS;
+
+  while (steps < maxSteps) {
+    steps++;
+    logger.info('AgentStream', `Step ${steps}/${maxSteps}`);
+
+    // Try streaming from LLM
+    const toolsForApi = TOOL_DEFINITIONS.map(t => ({ type: t.type, function: t.function }));
+    const reqBody = JSON.stringify({
+      model: provInfo.model,
+      messages,
+      tools: toolsForApi,
+      tool_choice: 'auto',
+      temperature: opts.temperature !== undefined ? opts.temperature : 0.7,
+      max_tokens: opts.max_tokens || 4096,
+      stream: true,
+    });
+
+    let llmResult;
+    try {
+      llmResult = await streamLLMWithTools(baseUrl, provInfo.api_key, reqBody, res);
+    } catch (e) {
+      res.write('data: ' + JSON.stringify({ error: e.message }) + '\n\n');
+      res.end(); return;
+    }
+
+    if (llmResult.tool_calls && llmResult.tool_calls.length > 0) {
+      // Tell client about tool calls
+      for (const tc of llmResult.tool_calls) {
+        res.write('event: tool_call\ndata: ' + JSON.stringify({ name: tc.function.name, id: tc.id }) + '\n\n');
+      }
+
+      // Add assistant message with tool_calls
+      messages.push({
+        role: 'assistant',
+        content: llmResult.content || null,
+        tool_calls: llmResult.tool_calls,
+      });
+
+      // Execute tools
+      for (const tc of llmResult.tool_calls) {
+        const funcName = tc.function.name;
+        let funcArgs = {};
+        try { funcArgs = JSON.parse(tc.function.arguments || '{}'); } catch (_) {}
+        logger.info('AgentStream', `Tool: ${funcName}`);
+        const toolResult = await executeTool(funcName, funcArgs);
+        const resultStr = JSON.stringify(toolResult).slice(0, 10000);
+        toolLog.push({ step: steps, tool: funcName, args: funcArgs, result_preview: resultStr.slice(0, 200) });
+
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: resultStr });
+        res.write('event: tool_result\ndata: ' + JSON.stringify({ name: funcName, preview: resultStr.slice(0, 300) }) + '\n\n');
+      }
+      continue; // Next loop iteration
+    }
+
+    // No tool calls — done
+    if (opts.session_id) {
+      addMessage(opts.session_id, 'assistant', llmResult.content || '');
+    }
+    res.write('event: done\ndata: ' + JSON.stringify({
+      session_id: opts.session_id || '',
+      model: provInfo.model,
+      steps,
+      tool_log: toolLog,
+    }) + '\n\n');
+    res.end();
+    return;
+  }
+
+  // Max steps
+  res.write('event: done\ndata: ' + JSON.stringify({ session_id: opts.session_id || '', steps, tool_log: toolLog, truncated: true }) + '\n\n');
+  res.end();
+}
+
+// Stream LLM response, accumulate content + detect tool_calls
+async function streamLLMWithTools(baseUrl, apiKey, reqBody, clientRes) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(baseUrl + '/chat/completions');
+    const mod = url.protocol === 'https:' ? require('https') : require('http');
+    const req = mod.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
+        'User-Agent': 'openclaw/' + VERSION,
+        'Content-Length': Buffer.byteLength(reqBody),
+      },
+      timeout: 120000,
+    }, (resp) => {
+      if (resp.statusCode !== 200) {
+        let body = '';
+        resp.on('data', c => body += c);
+        resp.on('end', () => reject(new Error(`LLM HTTP ${resp.statusCode}: ${body.slice(0, 200)}`)));
+        return;
+      }
+      let buffer = '';
+      let content = '';
+      let toolCalls = [];
+      let reasoning = '';
+
+      resp.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+            if (!delta) continue;
+
+            // Content streaming
+            if (delta.content) {
+              content += delta.content;
+              clientRes.write('data: ' + JSON.stringify({ content: delta.content }) + '\n\n');
+            }
+            // Reasoning
+            if (delta.reasoning_content) {
+              reasoning += delta.reasoning_content;
+            }
+            // Tool calls accumulation
+            if (delta.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index || 0;
+                if (!toolCalls[idx]) {
+                  toolCalls[idx] = { id: tc.id || '', function: { name: '', arguments: '' } };
+                }
+                if (tc.id) toolCalls[idx].id = tc.id;
+                if (tc.function) {
+                  if (tc.function.name) toolCalls[idx].function.name += tc.function.name;
+                  if (tc.function.arguments) toolCalls[idx].function.arguments += tc.function.arguments;
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      });
+
+      resp.on('end', () => {
+        resolve({ content, reasoning, tool_calls: toolCalls.length > 0 ? toolCalls : null });
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('LLM timeout')); });
+    req.write(reqBody);
+    req.end();
+  });
+}
+
 // ─── Agent Chat Route ────────────────────────────────────────────────────────
 
 route('POST', '/api/agent/chat', async (req, res) => {
@@ -3123,7 +3314,22 @@ route('POST', '/api/agent/chat', async (req, res) => {
   addMessage(sessionId, 'user', message, imageBase64_agent ? { image_base64: imageBase64_agent } : undefined);
 
   const model = body.model || sess.model || config.model;
+  const wantStream = body.stream === true;
 
+  if (wantStream) {
+    // SSE stream with tool loop
+    await agentChatStream({
+      model,
+      messages: sess.messages,
+      system_prompt: buildSystemPrompt(config.system_prompt, sess.system_prompt),
+      session_id: sessionId,
+      temperature: body.temperature,
+      max_tokens: body.max_tokens,
+    }, res);
+    return;
+  }
+
+  // Non-stream (original behavior)
   // Keep-alive: send space every 15s to prevent client/proxy timeout during long agent runs
   const keepAlive = setInterval(() => {
     try { if (!res.writableEnded) res.write(' '); } catch (_) {}

@@ -40,6 +40,7 @@ class SettingsFragment : Fragment() {
     private lateinit var tvHeartbeatSummary: TextView
     private lateinit var tvAgentsSummary: TextView
     private lateinit var tvToolsSummary: TextView
+    private lateinit var tvMemorySummary: TextView
     private lateinit var tvSkillsCount: TextView
     private lateinit var tvVersion: TextView
     private lateinit var tvLangSummary: TextView
@@ -69,6 +70,7 @@ class SettingsFragment : Fragment() {
         "USER.md" to FileConfig("$BASE_URL/api/user", "$BASE_URL/api/user", "content"),
         "AGENTS.md" to FileConfig("$BASE_URL/api/agents", "$BASE_URL/api/agents", "content"),
         "TOOLS.md" to FileConfig("$BASE_URL/api/tools-md", "$BASE_URL/api/tools-md", "content"),
+        "MEMORY.md" to FileConfig("$BASE_URL/api/memory", "$BASE_URL/api/memory", "content"),
     )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -85,6 +87,7 @@ class SettingsFragment : Fragment() {
         tvHeartbeatSummary = view.findViewById(R.id.tvHeartbeatSummary)
         tvAgentsSummary = view.findViewById(R.id.tvAgentsSummary)
         tvToolsSummary = view.findViewById(R.id.tvToolsSummary)
+        tvMemorySummary = view.findViewById(R.id.tvMemorySummary)
         tvSkillsCount = view.findViewById(R.id.tvSkillsCount)
         tvVersion = view.findViewById(R.id.tvVersion)
         tvLangSummary = view.findViewById(R.id.tvLangSummary)
@@ -96,6 +99,7 @@ class SettingsFragment : Fragment() {
         view.findViewById<View>(R.id.cellHeartbeat).setOnClickListener { editFile("HEARTBEAT.md", "💓 HEARTBEAT") }
         view.findViewById<View>(R.id.cellAgents).setOnClickListener { editFile("AGENTS.md", "🤝 AGENTS") }
         view.findViewById<View>(R.id.cellTools).setOnClickListener { editFile("TOOLS.md", "🔧 TOOLS") }
+        view.findViewById<View>(R.id.cellMemory).setOnClickListener { editFile("MEMORY.md", "🧠 MEMORY") }
         view.findViewById<View>(R.id.cellSkillsList).setOnClickListener { showSkillsList() }
         view.findViewById<View>(R.id.cellSkillInstall).setOnClickListener { showSkillInstaller() }
         view.findViewById<View>(R.id.cellClearCache).setOnClickListener { clearEngineCache() }
@@ -227,7 +231,8 @@ class SettingsFragment : Fragment() {
     private suspend fun loadAllFiles() {
         val tvMap = mapOf(
             "SOUL.md" to tvSoulSummary, "USER.md" to tvUserSummary,
-            "HEARTBEAT.md" to tvHeartbeatSummary, "AGENTS.md" to tvAgentsSummary, "TOOLS.md" to tvToolsSummary
+            "HEARTBEAT.md" to tvHeartbeatSummary, "AGENTS.md" to tvAgentsSummary, "TOOLS.md" to tvToolsSummary,
+            "MEMORY.md" to tvMemorySummary
         )
         for ((fileName, tv) in tvMap) {
             try {
@@ -590,6 +595,7 @@ class SettingsFragment : Fragment() {
                                 "HEARTBEAT.md" -> tvHeartbeatSummary.text = summary
                                 "AGENTS.md" -> tvAgentsSummary.text = summary
                                 "TOOLS.md" -> tvToolsSummary.text = summary
+                            "MEMORY.md" -> tvMemorySummary.text = summary
                             }
                             snack(getString(R.string.settings_file_saved, fileName))
                         } catch (e: Exception) { snack(getString(R.string.settings_file_save_failed, e.message ?: "")) }

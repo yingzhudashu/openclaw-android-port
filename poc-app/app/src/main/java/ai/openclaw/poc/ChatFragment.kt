@@ -547,11 +547,13 @@ class ChatFragment : Fragment() {
             .setTitle(shortTitle)
             .setItems(arrayOf(
                 getString(R.string.chat_edit_title),
-                getString(R.string.chat_delete)
+                getString(R.string.chat_delete),
+                getString(R.string.chat_clear_context)
             )) { _, which ->
                 when (which) {
                     0 -> showRenameSessionDialog(session, onDone)
                     1 -> showDeleteSessionConfirm(session, onDone)
+                    2 -> showClearContextConfirm(session)
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -581,6 +583,30 @@ class ChatFragment : Fragment() {
                     } catch (e: Exception) {
                         view?.let { Snackbar.make(it, "❌ ${e.message}", Snackbar.LENGTH_SHORT).show() }
                     }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showClearContextConfirm(session: Session) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.chat_clear_context))
+            .setMessage(getString(R.string.chat_clear_context_confirm))
+            .setPositiveButton(getString(R.string.chat_clear_context)) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val url = URL("$BASE_URL/api/sessions/${session.id}")
+                            val conn = url.openConnection() as HttpURLConnection
+                            conn.requestMethod = "DELETE"
+                            conn.connectTimeout = 5000; conn.readTimeout = 5000
+                            conn.responseCode; conn.disconnect()
+                        }
+                        // Start a new session with same ID effectively clears context
+                        startNewSession()
+                        Toast.makeText(context, getString(R.string.chat_context_cleared), Toast.LENGTH_SHORT).show()
+                    } catch (_: Exception) { }
                 }
             }
             .setNegativeButton(R.string.cancel, null)

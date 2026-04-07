@@ -296,4 +296,11 @@
     <!-- Phase 3: Message Interaction -->
     <string name="copy_code">Copy code</string>
     <string name="link_open_failed">Cannot open link</string>
+
+    <!-- Phase 4: Memory & Context -->
+    <string name="settings_group_memory">Memory</string>
+    <string name="settings_memory">MEMORY.md</string>
+    <string name="chat_clear_context">Clear Context</string>
+    <string name="chat_clear_context_confirm">Clear current session context? Message history will be preserved.</string>
+    <string name="chat_context_cleared">Context cleared</string>
 </resources>

@@ -296,4 +296,11 @@
     <!-- Phase 3: 消息交互增强 -->
     <string name="copy_code">复制代码</string>
     <string name="link_open_failed">无法打开链接</string>
+
+    <!-- Phase 4: 记忆与上下文 -->
+    <string name="settings_group_memory">记忆</string>
+    <string name="settings_memory">MEMORY.md</string>
+    <string name="chat_clear_context">清除上下文</string>
+    <string name="chat_clear_context_confirm">确定清除当前会话的上下文吗？消息历史将保留。</string>
+    <string name="chat_context_cleared">上下文已清除</string>
 </resources>

@@ -204,7 +204,31 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ═══ Skills ═══ -->
+        
+        <!-- Memory -->
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/settings_group_memory" android:textSize="13sp" android:textColor="#888888"
+            android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:background="#FFFFFF">
+
+            <LinearLayout android:id="@+id/cellMemory" android:layout_width="match_parent" android:layout_height="56dp"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingStart="16dp" android:paddingEnd="16dp"
+                android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="🧠" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/settings_memory" android:textSize="16sp" android:textColor="#212121" />
+                <TextView android:id="@+id/tvMemorySummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="13sp" android:textColor="#999999" android:layout_marginEnd="4dp"
+                    android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="›" android:textSize="18sp" android:textColor="#C0C0C0" />
+            </LinearLayout>
+        </LinearLayout>
+<!-- ═══ Skills ═══ -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_skills" android:textSize="13sp" android:textColor="#888888"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />

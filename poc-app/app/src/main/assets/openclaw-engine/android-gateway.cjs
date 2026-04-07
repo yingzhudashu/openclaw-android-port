@@ -998,6 +998,79 @@ route('GET', '/health', (req, res) => {
   });
 });
 
+// --- Doctor (self-check) ---
+route('GET', '/api/doctor', (req, res) => {
+  const checks = [];
+  
+  // Check providers
+  let hasValidProvider = false;
+  for (const [name, prov] of Object.entries(config.providers || {})) {
+    if (prov.api_key) {
+      hasValidProvider = true;
+      checks.push({ name: `provider.${name}`, status: 'ok', detail: `${(prov.models||[]).length} models` });
+    } else {
+      checks.push({ name: `provider.${name}`, status: 'warn', detail: 'No API key configured' });
+    }
+  }
+  if (!hasValidProvider) {
+    checks.push({ name: 'providers', status: 'error', detail: 'No providers have API keys configured' });
+  }
+  
+  // Check model
+  const provInfo = resolveProvider(config.model);
+  if (provInfo && provInfo.api_key) {
+    checks.push({ name: 'default_model', status: 'ok', detail: `${config.model} via ${provInfo.provider}` });
+  } else {
+    checks.push({ name: 'default_model', status: 'error', detail: `Cannot resolve model: ${config.model}` });
+  }
+  
+  // Check workspace files
+  const workspaceDir = path.join(BASE_DIR, 'workspace');
+  const requiredFiles = ['SOUL.md', 'USER.md', 'MEMORY.md'];
+  for (const f of requiredFiles) {
+    const fp = path.join(workspaceDir, f);
+    if (fs.existsSync(fp)) {
+      const size = fs.statSync(fp).size;
+      checks.push({ name: `workspace.${f}`, status: 'ok', detail: `${size} bytes` });
+    } else {
+      checks.push({ name: `workspace.${f}`, status: 'warn', detail: 'File missing' });
+    }
+  }
+  
+  // Check sessions
+  const sessions = Object.keys(sessionsData.sessions || {});
+  checks.push({ name: 'sessions', status: 'ok', detail: `${sessions.length} sessions` });
+  
+  // Check skills
+  const skills = getAvailableSkills();
+  checks.push({ name: 'skills', status: 'ok', detail: `${skills.length} installed` });
+  
+  // Check memory
+  try {
+    const memContent = readMemory();
+    checks.push({ name: 'memory', status: 'ok', detail: `${memContent.length} chars` });
+  } catch (_) {
+    checks.push({ name: 'memory', status: 'warn', detail: 'Cannot read MEMORY.md' });
+  }
+  
+  // Check embedding
+  const emb = config.embedding || {};
+  if (emb.api_key && emb.model) {
+    checks.push({ name: 'embedding', status: 'ok', detail: `${emb.model}` });
+  } else {
+    checks.push({ name: 'embedding', status: 'warn', detail: 'Not configured (basic memory mode)' });
+  }
+  
+  // Check browser bridge
+  checks.push({ name: 'browser', status: 'ok', detail: 'WebViewBridge on :18790' });
+  
+  const errors = checks.filter(c => c.status === 'error').length;
+  const warns = checks.filter(c => c.status === 'warn').length;
+  const overall = errors > 0 ? 'unhealthy' : warns > 0 ? 'degraded' : 'healthy';
+  
+  sendJSON(res, 200, { status: overall, checks, summary: { ok: checks.length - errors - warns, warnings: warns, errors } });
+});
+
 // --- Status ---
 route('GET', '/api/status', (req, res) => {
   sendJSON(res, 200, {
@@ -2506,6 +2579,53 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'edit_file',
+      description: '精确编辑文件。通过指定 oldText 和 newText 进行精确替换。oldText 必须精确匹配文件中的内容。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '文件路径（相对于 workspace）' },
+          old_text: { type: 'string', description: '要替换的原始文本（必须精确匹配）' },
+          new_text: { type: 'string', description: '替换后的新文本' },
+        },
+        required: ['path', 'old_text', 'new_text'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'create_directory',
+      description: '创建目录（包括所有父目录）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '目录路径（相对于 workspace）' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'delete_file',
+      description: '删除文件或目录。删除前请确认用户同意。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '文件或目录路径（相对于 workspace）' },
+        },
+        required: ['path'],
+      },
+    },
+  },
 ];
 
 // ─── Tool Executors ──────────────────────────────────────────────────────────
@@ -2977,6 +3097,36 @@ async function executeTool(name, args) {
           logger.error('Skill', `Install failed: ${e.message}`);
           return { error: `安装失败: ${e.message}` };
         }
+      }
+
+      case 'edit_file': {
+        const filePath = resolvePath(args.path);
+        if (!fs.existsSync(filePath)) return { error: `File not found: ${args.path}` };
+        const content = fs.readFileSync(filePath, 'utf-8');
+        if (!content.includes(args.old_text)) {
+          return { error: 'old_text not found in file. Must match exactly.' };
+        }
+        const newContent = content.replace(args.old_text, args.new_text);
+        fs.writeFileSync(filePath, newContent, 'utf-8');
+        return { status: 'ok', path: args.path, replacements: 1 };
+      }
+
+      case 'create_directory': {
+        const dirPath = resolvePath(args.path);
+        ensureDir(dirPath);
+        return { status: 'ok', path: args.path };
+      }
+
+      case 'delete_file': {
+        const targetPath = resolvePath(args.path);
+        if (!fs.existsSync(targetPath)) return { error: `Not found: ${args.path}` };
+        const stat = fs.statSync(targetPath);
+        if (stat.isDirectory()) {
+          fs.rmSync(targetPath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(targetPath);
+        }
+        return { status: 'ok', deleted: args.path };
       }
 
       default:

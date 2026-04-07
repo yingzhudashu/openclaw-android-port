@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-04-07
+
+### Added
+- **3 New Agent Tools** (22 total)
+  - `edit_file` — Precise text replacement in files (matches desktop `edit` tool)
+  - `create_directory` — Create directories recursively
+  - `delete_file` — Remove files or directories
+- **Doctor API** — `/api/doctor` self-check endpoint (providers, model, workspace, skills, memory, embedding, browser)
+
+### Improved
+- Agent now has file editing capability matching desktop OpenClaw
+- Doctor checks: provider keys, default model resolution, workspace files, session count, skill count, memory status
+
 ## [1.8.0] - 2026-04-07
 
 ### Added

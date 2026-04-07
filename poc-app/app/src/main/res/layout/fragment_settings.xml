@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -11,7 +11,7 @@
         android:paddingTop="12dp"
         android:paddingBottom="24dp">
 
-        <!-- ═══ AI 配置 ═══ -->
+        <!-- 鈺愨晲鈺?AI 閰嶇疆 鈺愨晲鈺?-->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_ai" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="4dp" />
@@ -19,88 +19,88 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:background="@android:color/white" android:elevation="0.5dp">
 
-            <!-- 模型供应商 -->
+            <!-- 妯″瀷渚涘簲鍟?-->
             <LinearLayout android:id="@+id/cellModelProvider" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🤖" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_model_provider" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvModelProviderSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="@string/loading" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="180dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
                 android:background="@color/divider" android:layout_marginStart="46dp" />
 
-            <!-- 默认模型 -->
+            <!-- 榛樿妯″瀷 -->
             <LinearLayout android:id="@+id/cellDefaultModel" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="⚡" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="鈿? android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_default_model" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvDefaultModelSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="@string/loading" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="180dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
                 android:background="@color/divider" android:layout_marginStart="46dp" />
 
-            <!-- 内嵌模型 -->
+            <!-- 鍐呭祵妯″瀷 -->
             <LinearLayout android:id="@+id/cellEmbedding" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🧠" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_embedding" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvEmbeddingSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="160dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
                 android:background="@color/divider" android:layout_marginStart="46dp" />
 
-            <!-- 记忆模式 -->
+            <!-- 璁板繂妯″紡 -->
             <LinearLayout android:id="@+id/cellMemoryMode" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="💾" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃捑" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_memory_mode" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMemoryModeSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
                 android:background="@color/divider" android:layout_marginStart="46dp" />
 
-            <!-- 最大工具调用 -->
+            <!-- 鏈€澶у伐鍏疯皟鐢?-->
             <LinearLayout android:id="@+id/cellMaxSteps" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🔄" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃攧" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_max_steps" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMaxStepsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -108,7 +108,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ═══ AI 个性化 ═══ -->
+        <!-- 鈺愨晲鈺?AI 涓€у寲 鈺愨晲鈺?-->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_personal" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
@@ -121,14 +121,14 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="👤" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃懁" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_soul" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvSoulSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -139,14 +139,14 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🧑" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_user" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvUserSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -157,14 +157,14 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="💓" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃挀" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_heartbeat" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvHeartbeatSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -175,14 +175,14 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🤝" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_agents" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvAgentsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -193,14 +193,14 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🔧" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃敡" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_tools" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvToolsSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
         </LinearLayout>
 
@@ -218,17 +218,17 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🧠" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_memory" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvMemorySummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
                     android:maxWidth="140dp" android:singleLine="true" android:ellipsize="end" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
         </LinearLayout>
-<!-- ═══ Skills ═══ -->
+<!-- 鈺愨晲鈺?Skills 鈺愨晲鈺?-->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_skills" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
@@ -241,13 +241,13 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="📦" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃摝" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_installed_skills" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvSkillsCount" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="0" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -258,13 +258,13 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="➕" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="鉃? android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_install_skill" android:textSize="16sp" android:textColor="#4CAF50" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ═══ 系统 ═══ -->
+        <!-- 鈺愨晲鈺?绯荤粺 鈺愨晲鈺?-->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_system" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
@@ -277,7 +277,7 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="📤" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃摛" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_backup" android:textSize="16sp" android:textColor="@color/text_primary" />
             </LinearLayout>
@@ -290,7 +290,7 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="📥" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃摜" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_restore" android:textSize="16sp" android:textColor="@color/text_primary" />
             </LinearLayout>
@@ -303,7 +303,7 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🗑" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃棏" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_clear_cache" android:textSize="16sp" android:textColor="#FF5252" />
             </LinearLayout>
@@ -316,13 +316,13 @@
                 android:paddingStart="16dp" android:paddingEnd="16dp"
                 android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🌐" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃寪" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_language" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvLangSummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+                    android:text="鈥? android:textSize="18sp" android:textColor="@color/text_disabled" />
             </LinearLayout>
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
@@ -332,7 +332,7 @@
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="ℹ️" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="鈩癸笍" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_about" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <TextView android:id="@+id/tvVersion" android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -347,7 +347,7 @@
             android:background="@color/bg_card"
             android:layout_marginTop="8dp">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="💓" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                android:text="馃挀" android:textSize="18sp" android:layout_marginEnd="12dp" />
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                 android:text="@string/settings_heartbeat" android:textSize="16sp" android:textColor="@color/text_primary" />
             <com.google.android.material.materialswitch.MaterialSwitch
@@ -356,7 +356,7 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- ═══ Appearance ═══ -->
+        <!-- 鈺愨晲鈺?Appearance 鈺愨晲鈺?-->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/settings_group_appearance" android:textSize="13sp" android:textColor="@color/group_title"
             android:paddingStart="16dp" android:paddingBottom="6dp" android:paddingTop="16dp" />
@@ -368,7 +368,7 @@
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:paddingStart="16dp" android:paddingEnd="16dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🌙" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                    android:text="馃寵" android:textSize="18sp" android:layout_marginEnd="12dp" />
                 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                     android:text="@string/settings_dark_mode" android:textSize="16sp" android:textColor="@color/text_primary" />
                 <com.google.android.material.materialswitch.MaterialSwitch

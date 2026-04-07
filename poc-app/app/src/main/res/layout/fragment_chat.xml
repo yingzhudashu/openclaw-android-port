@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="@color/md_theme_surface">
 
-    <!-- 顶部栏 -->
+    <!-- 椤堕儴鏍?-->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
@@ -17,7 +17,7 @@
         android:paddingEnd="10dp"
         android:gravity="center_vertical">
 
-        <!-- 会话 ID（短） -->
+        <!-- 浼氳瘽 ID锛堢煭锛?-->
         <TextView
             android:id="@+id/tvSessionId"
             android:layout_width="wrap_content"
@@ -28,7 +28,7 @@
             android:fontFamily="monospace"
             android:layout_marginEnd="8dp" />
 
-        <!-- 会话标题 -->
+        <!-- 浼氳瘽鏍囬 -->
         <TextView
             android:id="@+id/tvSessionTitle"
             android:layout_width="0dp"
@@ -41,7 +41,7 @@
             android:singleLine="true"
             android:ellipsize="end" />
 
-        <!-- 工具数 -->
+        <!-- 宸ュ叿鏁?-->
         <TextView
             android:id="@+id/tvToolCount"
             android:layout_width="wrap_content"
@@ -51,7 +51,7 @@
             android:textColor="@color/timestamp_light"
             android:layout_marginEnd="8dp" />
 
-        <!-- 会话列表 -->
+        <!-- 浼氳瘽鍒楄〃 -->
         <ImageButton
             android:id="@+id/btnSessionList"
             android:layout_width="36dp"
@@ -61,9 +61,9 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/content_desc_session_list"
             android:scaleType="centerInside"
-            app:tint="@color/md_theme_primary" />
+            app:tint="@color/fab_bg" />
 
-        <!-- 新建会话（加号） -->
+        <!-- 鏂板缓浼氳瘽锛堝姞鍙凤級 -->
         <ImageButton
             android:id="@+id/btnNewSession"
             android:layout_width="36dp"
@@ -72,16 +72,16 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/content_desc_new_session"
             android:scaleType="centerInside"
-            app:tint="@color/md_theme_primary" />
+            app:tint="@color/fab_bg" />
     </LinearLayout>
 
-    <!-- 分割线 -->
+    <!-- 鍒嗗壊绾?-->
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
         android:background="@color/topbar_divider" />
 
-    <!-- 网络状态横幅 -->
+    <!-- 缃戠粶鐘舵€佹í骞?-->
     <TextView
         android:id="@+id/tvNetworkBanner"
         android:layout_width="match_parent"
@@ -95,7 +95,7 @@
         android:paddingBottom="6dp"
         android:visibility="gone" />
 
-    <!-- 消息列表 -->
+    <!-- 娑堟伅鍒楄〃 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvMessages"
         android:layout_width="match_parent"
@@ -107,7 +107,7 @@
         android:scrollbars="none"
         android:overScrollMode="never" />
 
-    <!-- 底部输入栏 -->
+    <!-- 搴曢儴杈撳叆鏍?-->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -168,7 +168,7 @@
             android:contentDescription="@string/content_desc_voice"
             app:fabSize="mini"
             app:backgroundTint="@color/md_theme_secondary"
-            app:tint="@color/md_theme_on_primary" />
+            app:tint="@color/fab_icon" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabSend"
@@ -179,8 +179,8 @@
             android:contentDescription="@string/content_desc_send"
             app:fabSize="mini"
             app:fabCustomSize="42dp"
-            app:backgroundTint="@color/md_theme_primary"
-            app:tint="@color/md_theme_on_primary"
+            app:backgroundTint="@color/fab_bg"
+            app:tint="@color/fab_icon"
             app:elevation="2dp" />
     </LinearLayout>
 

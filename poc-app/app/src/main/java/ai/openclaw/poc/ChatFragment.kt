@@ -52,7 +52,6 @@ class ChatFragment : Fragment() {
     private lateinit var rvMessages: RecyclerView
     private lateinit var etMessage: EditText
     private lateinit var fabSend: FloatingActionButton
-    private lateinit var fabVoice: FloatingActionButton
     private lateinit var searchBar: View
     private lateinit var etSearch: EditText
     private val VOICE_REQUEST_CODE = 9001

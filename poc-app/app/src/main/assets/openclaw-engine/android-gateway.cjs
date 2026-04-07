@@ -1904,6 +1904,11 @@ function matchRoute(method, pathname) {
 
 function createServer() {
   const server = http.createServer(async (req, res) => {
+    // Per-request timeout
+    req.setTimeout(120000);
+    res.setTimeout(120000);
+    req.socket.setTimeout(120000, () => { req.socket.destroy(); });
+
     const method = req.method.toUpperCase();
     const pathname = getPathname(req.url || '/');
 
@@ -2121,6 +2126,12 @@ function main() {
   const server = createServer();
   const port = (config.gateway && config.gateway.port) || 18789;
   const bind = (config.gateway && config.gateway.bind) || '127.0.0.1';
+
+  // Connection timeout — prevent stuck connections from blocking server
+  server.timeout = 120000; // 2 minutes
+  server.keepAliveTimeout = 30000; // 30 seconds
+  server.headersTimeout = 60000; // 1 minute
+  server.requestTimeout = 120000; // 2 minutes
 
   server.listen(port, bind, () => {
     console.log('');

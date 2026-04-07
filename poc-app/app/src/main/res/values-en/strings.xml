@@ -321,4 +321,18 @@
     <string name="chat_exported">Exported to %s</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
+    <string name="tab_cron">⏰ Cron</string>
+    <string name="cron_empty">No scheduled tasks\nTap + to create</string>
+    <string name="cron_create">Create Task</string>
+    <string name="cron_edit">Edit Task</string>
+    <string name="cron_save">Save</string>
+    <string name="cron_name_hint">Task Name</string>
+    <string name="cron_prompt_hint">AI Prompt (message to send)</string>
+    <string name="cron_interval_hint">Interval (minutes, min 15)</string>
+    <string name="cron_notify">Push notification on completion</string>
+    <string name="cron_interval_fmt">Every %d min</string>
+    <string name="cron_never_run">Never run</string>
+    <string name="cron_delete_confirm">Delete this scheduled task?</string>
+    <string name="cron_notification_channel">Scheduled Tasks</string>
+    <string name="cron_notification_desc">Results from scheduled AI tasks</string>
 </resources>

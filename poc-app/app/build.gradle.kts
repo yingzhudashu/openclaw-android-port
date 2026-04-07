@@ -11,8 +11,8 @@ android {
         applicationId = "ai.openclaw.poc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 53
-        versionName = "1.3.1"
+        versionCode = 54
+        versionName = "1.4.0"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -68,4 +68,6 @@ dependencies {
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.fragment:fragment-ktx:1.8.0")
+    // WorkManager for cron tasks
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

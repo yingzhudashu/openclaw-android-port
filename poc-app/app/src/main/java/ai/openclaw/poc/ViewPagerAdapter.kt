@@ -18,7 +18,8 @@ class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
         const val TAB_CHAT = 0
         const val TAB_SETTINGS = 1
         const val TAB_STATUS = 2
-        const val TAB_COUNT = 3
+        const val TAB_CRON = 3
+        const val TAB_COUNT = 4
     }
 
     override fun getItemCount(): Int = TAB_COUNT
@@ -28,6 +29,7 @@ class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
             TAB_CHAT -> ChatFragment()
             TAB_SETTINGS -> SettingsFragment()
             TAB_STATUS -> StatusFragment()
+            TAB_CRON -> CronFragment()
             else -> ChatFragment()
         }
     }

@@ -319,4 +319,20 @@
     <string name="search_close">关闭搜索</string>
     <string name="chat_export">导出对话</string>
     <string name="chat_exported">已导出到 %s</string>
+    <string name="date_today">今天</string>
+    <string name="date_yesterday">昨天</string>
+    <string name="tab_cron">⏰ 定时</string>
+    <string name="cron_empty">暂无定时任务\n点击 + 创建</string>
+    <string name="cron_create">创建定时任务</string>
+    <string name="cron_edit">编辑定时任务</string>
+    <string name="cron_save">保存</string>
+    <string name="cron_name_hint">任务名称</string>
+    <string name="cron_prompt_hint">AI 指令（发送给 AI 的消息）</string>
+    <string name="cron_interval_hint">执行间隔（分钟，最小15）</string>
+    <string name="cron_notify">执行后推送通知</string>
+    <string name="cron_interval_fmt">每 %d 分钟</string>
+    <string name="cron_never_run">从未执行</string>
+    <string name="cron_delete_confirm">确认删除此定时任务？</string>
+    <string name="cron_notification_channel">定时任务通知</string>
+    <string name="cron_notification_desc">定时任务执行结果推送</string>
 </resources>

@@ -51,7 +51,8 @@ class MainActivity : AppCompatActivity() {
         tabTitles = arrayOf(
             getString(R.string.tab_chat),
             getString(R.string.tab_settings),
-            getString(R.string.tab_status)
+            getString(R.string.tab_status),
+            getString(R.string.tab_cron)
         )
 
         // 初始化 NodeRunner
@@ -131,6 +132,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             nodeRunner.start()
         }
+        // Initialize cron scheduler
+        CronWorker.createNotificationChannel(this)
+        CronWorker.scheduleAll(this)
     }
 
     /**

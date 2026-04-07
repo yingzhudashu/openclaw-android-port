@@ -2356,10 +2356,10 @@ const os = require('os');
 const { exec: execCmd, execSync } = require('child_process');
 
 // Maximum agent loop iterations to prevent infinite loops (configurable via openclaw.json)
-const DEFAULT_MAX_AGENT_STEPS = 25;
-const TOOL_EXEC_TIMEOUT = 30000; // 30s per tool call
-const TAVILY_API_KEY_DEFAULT = '';
-function getTavilyKey() { return (config.tavily && config.tavily.api_key) || TAVILY_API_KEY_DEFAULT; }
+const DEFAULT_MAX_AGENT_STEPS = 10;
+const TOOL_EXEC_TIMEOUT = 20000; // 20s per tool call
+const TAVILY_API_KEY_BUILTIN = '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';
+function getTavilyKey() { return (config.tavily && config.tavily.api_key) || TAVILY_API_KEY_BUILTIN; }
 const BROWSER_BRIDGE_URL = 'http://127.0.0.1:18790';
 
 // ─── Tool Definitions (OpenAI function calling format) ───────────────────────
@@ -2761,6 +2761,20 @@ function stripHtml(html) {
 async function executeTool(name, args) {
   logger.info('Tool', `Executing: ${name}(${JSON.stringify(args).slice(0, 200)})`);
   
+  // Wrap with timeout
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error(`Tool ${name} timed out after ${TOOL_EXEC_TIMEOUT/1000}s`)), TOOL_EXEC_TIMEOUT)
+  );
+  
+  try {
+    return await Promise.race([executeToolInner(name, args), timeoutPromise]);
+  } catch (e) {
+    logger.warn('Tool', `${name} failed: ${e.message}`);
+    return { error: e.message };
+  }
+}
+
+async function executeToolInner(name, args) {
   try {
     switch (name) {
       case 'web_search': {

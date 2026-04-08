@@ -26,7 +26,7 @@ const { URL } = require('url');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const VERSION = '2026.4.5.5-android';
+const VERSION = '1.2.0-android';
 const START_TIME = Date.now();
 const MAX_BODY_SIZE = 20 * 1024 * 1024; // 20 MB request body limit (images can be large)
 const MAX_SESSIONS = 100;
@@ -2407,7 +2407,9 @@ const TOOL_DEFINITIONS = [
         type: 'object',
         properties: {
           command: { type: 'string', description: 'Shell 命令' },
-          timeout: { type: 'number', description: '超时秒数（默认 30）' },
+          timeout: { type: 'number', description: '超时秒数（默认 30，background 模式默认 300）' },
+          background: { type: 'boolean', description: '后台运行（立即返回进程ID，用 process 工具管理）' },
+          cwd: { type: 'string', description: '工作目录' },
         },
         required: ['command'],
       },
@@ -2697,7 +2699,282 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
+  // ─── Process Management Tool ─────────────────────────────────────────────
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'process',
+      description: '管理后台进程：查看运行中的进程、获取输出、向进程写入数据、终止进程。',
+      parameters: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', description: '操作: list | poll | log | write | kill', enum: ['list', 'poll', 'log', 'write', 'kill'] },
+          session_id: { type: 'string', description: '进程会话 ID（poll/log/write/kill 必需）' },
+          timeout: { type: 'number', description: 'poll 超时毫秒数（默认 10000）' },
+          offset: { type: 'number', description: 'log 偏移量' },
+          limit: { type: 'number', description: 'log 最大行数' },
+          data: { type: 'string', description: 'write 写入的数据' },
+        },
+        required: ['action'],
+      },
+    },
+  },
+  // ─── Sub-agent Tools ───────────────────────────────────────────────────────
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'sessions_spawn',
+      description: '创建一个子代理来执行独立任务。子代理有自己的 Agent 循环，可以使用所有工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          task: { type: 'string', description: '子代理要执行的任务描述' },
+          model: { type: 'string', description: '子代理使用的模型（默认与当前相同）' },
+          label: { type: 'string', description: '子代理标签（用于识别）' },
+          timeout: { type: 'number', description: '超时秒数（默认 300）' },
+        },
+        required: ['task'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'sessions_send',
+      description: '向指定子代理发送消息。',
+      parameters: {
+        type: 'object',
+        properties: {
+          session_id: { type: 'string', description: '子代理会话 ID' },
+          message: { type: 'string', description: '要发送的消息' },
+        },
+        required: ['session_id', 'message'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'sessions_list',
+      description: '列出所有子代理及其状态。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'sessions_yield',
+      description: '暂停当前执行，等待所有运行中的子代理完成后再继续。',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: '暂停原因说明' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'session_status',
+      description: '获取当前会话状态：模型、token 用量等。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
 ];
+
+
+// ─── Process Manager ─────────────────────────────────────────────────────────
+
+const bgProcesses = new Map(); // sessionId -> { proc, stdout, stderr, status, exitCode, startedAt }
+let bgProcessCounter = 0;
+
+function spawnBackgroundProcess(command, opts = {}) {
+  const id = 'proc_' + (++bgProcessCounter) + '_' + Date.now().toString(36);
+  const cwd = opts.cwd || BASE_DIR;
+  const timeout = (opts.timeout || 300) * 1000;
+  
+  const proc = require('child_process').spawn('sh', ['-c', command], {
+    cwd,
+    env: { ...process.env, ...(opts.env || {}) },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  
+  const entry = {
+    proc,
+    command,
+    stdout: '',
+    stderr: '',
+    status: 'running',
+    exitCode: null,
+    startedAt: Date.now(),
+    waiters: [],
+  };
+  
+  proc.stdout.on('data', (data) => {
+    entry.stdout += data.toString();
+    if (entry.stdout.length > 512000) entry.stdout = entry.stdout.slice(-256000);
+    while (entry.waiters.length > 0) entry.waiters.shift()(true);
+  });
+  
+  proc.stderr.on('data', (data) => {
+    entry.stderr += data.toString();
+    if (entry.stderr.length > 128000) entry.stderr = entry.stderr.slice(-64000);
+    while (entry.waiters.length > 0) entry.waiters.shift()(true);
+  });
+  
+  proc.on('close', (code) => {
+    entry.status = 'exited';
+    entry.exitCode = code;
+    while (entry.waiters.length > 0) entry.waiters.shift()(true);
+  });
+  
+  proc.on('error', (err) => {
+    entry.status = 'error';
+    entry.stderr += '\nProcess error: ' + err.message;
+    while (entry.waiters.length > 0) entry.waiters.shift()(true);
+  });
+  
+  // Auto-kill on timeout
+  setTimeout(() => {
+    if (entry.status === 'running') {
+      try { proc.kill('SIGTERM'); } catch (_) {}
+      entry.status = 'timeout';
+      while (entry.waiters.length > 0) entry.waiters.shift()(true);
+    }
+  }, timeout);
+  
+  bgProcesses.set(id, entry);
+  return id;
+}
+
+function pollProcess(id, timeoutMs = 10000) {
+  const entry = bgProcesses.get(id);
+  if (!entry) return Promise.resolve(null);
+  if (entry.status !== 'running') return Promise.resolve(entry);
+  
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      const idx = entry.waiters.indexOf(waiterFn);
+      if (idx >= 0) entry.waiters.splice(idx, 1);
+      resolve(entry);
+    }, timeoutMs);
+    
+    const waiterFn = () => {
+      clearTimeout(timer);
+      resolve(entry);
+    };
+    entry.waiters.push(waiterFn);
+  });
+}
+
+// ─── Sub-Agent Engine ────────────────────────────────────────────────────────
+
+const subAgents = new Map();
+let subAgentCounter = 0;
+
+// currentParentSessionId is set during agentChat to track which session spawned a sub-agent
+let currentParentSessionId = null;
+
+async function spawnSubAgent(opts) {
+  const id = 'sub_' + (++subAgentCounter) + '_' + Date.now().toString(36);
+  const model = opts.model || config.model;
+  const timeout = (opts.timeout || 300) * 1000;
+  
+  const entry = {
+    id,
+    task: opts.task,
+    model,
+    label: opts.label || 'subagent-' + subAgentCounter,
+    status: 'running',
+    result: null,
+    error: null,
+    startedAt: Date.now(),
+    messages: [],
+    parentSessionId: opts.parentSessionId || null,
+    resolvers: [],
+  };
+  subAgents.set(id, entry);
+  
+  // Run in background (async, don't await)
+  (async () => {
+    try {
+      const systemPrompt = buildSystemPrompt(config.system_prompt, '') + 
+        '\n\nYou are a sub-agent. Your task: ' + opts.task + 
+        '\nComplete the task and return results directly. Be concise.';
+    
+      entry.messages.push({ role: 'user', content: opts.task });
+    
+      const result = await agentChat({
+        model,
+        messages: entry.messages,
+        system_prompt: systemPrompt,
+        temperature: 0.7,
+        max_tokens: 4096,
+      });
+    
+      if (result.error) {
+        entry.status = 'error';
+        entry.error = result.error;
+        entry.result = result.message || JSON.stringify(result.detail) || result.error;
+      } else {
+        entry.status = 'completed';
+        entry.result = result.content;
+        entry.messages.push({ role: 'assistant', content: result.content });
+      }
+    } catch (e) {
+      entry.status = 'error';
+      entry.error = e.message;
+      entry.result = 'Sub-agent crashed: ' + e.message;
+    }
+    
+    // Notify yield waiters
+    while (entry.resolvers.length > 0) entry.resolvers.shift()(entry);
+    
+    logger.info('SubAgent', `${entry.label} [${id}] finished: ${entry.status}`);
+  })();
+  
+  // Auto-timeout
+  setTimeout(() => {
+    if (entry.status === 'running') {
+      entry.status = 'timeout';
+      entry.result = 'Sub-agent timed out after ' + (timeout / 1000) + 's';
+      while (entry.resolvers.length > 0) entry.resolvers.shift()(entry);
+    }
+  }, timeout);
+  
+  logger.info('SubAgent', `Spawned ${entry.label} [${id}]: ${opts.task.slice(0, 100)}`);
+  return { id, label: entry.label, status: 'running' };
+}
+
+async function waitForSubAgents(parentSessionId) {
+  const running = [];
+  for (const [id, sa] of subAgents) {
+    if (sa.parentSessionId === parentSessionId && sa.status === 'running') {
+      running.push(sa);
+    }
+  }
+  if (running.length === 0) return [];
+  
+  const promises = running.map(sa => {
+    if (sa.status !== 'running') return Promise.resolve(sa);
+    return new Promise(resolve => sa.resolvers.push(resolve));
+  });
+  
+  return Promise.all(promises);
+}
 
 // ─── Tool Executors ──────────────────────────────────────────────────────────
 
@@ -2830,15 +3107,26 @@ async function executeToolInner(name, args) {
       }
 
       case 'exec': {
-        const timeout = (args.timeout || 30) * 1000;
+        const execTimeout = (args.timeout || 30) * 1000;
         // Security: block destructive commands
         const blocked = ['rm -rf /', 'mkfs', 'dd if=/dev/zero'];
         if (blocked.some(b => args.command.includes(b))) {
           return { error: 'Command blocked for safety', command: args.command };
         }
+        
+        // Background mode: spawn and return immediately
+        if (args.background) {
+          const procId = spawnBackgroundProcess(args.command, {
+            cwd: args.cwd || BASE_DIR,
+            timeout: args.timeout || 300,
+            env: args.env,
+          });
+          return { session_id: procId, status: 'running', command: args.command };
+        }
+        
         return new Promise((resolve) => {
           execCmd(args.command, {
-            timeout,
+            timeout: execTimeout,
             maxBuffer: 100 * 1024,
             cwd: args.cwd || BASE_DIR,
           }, (err, stdout, stderr) => {
@@ -3269,6 +3557,159 @@ async function executeToolInner(name, args) {
         return { status: 'ok', deleted: args.path };
       }
 
+
+      // ─── Process Management ────────────────────────────────────────────
+
+      case 'process': {
+        const action = args.action;
+        
+        if (action === 'list') {
+          const list = [];
+          for (const [id, entry] of bgProcesses) {
+            list.push({
+              session_id: id,
+              command: entry.command.slice(0, 100),
+              status: entry.status,
+              exit_code: entry.exitCode,
+              started_at: new Date(entry.startedAt).toISOString(),
+              runtime_ms: Date.now() - entry.startedAt,
+              stdout_bytes: entry.stdout.length,
+              stderr_bytes: entry.stderr.length,
+            });
+          }
+          return { processes: list, count: list.length };
+        }
+        
+        if (action === 'poll') {
+          const entry = bgProcesses.get(args.session_id);
+          if (!entry) return { error: 'Process not found: ' + args.session_id };
+          const timeoutMs = args.timeout || 10000;
+          const result = await pollProcess(args.session_id, timeoutMs);
+          return {
+            session_id: args.session_id,
+            status: entry.status,
+            exit_code: entry.exitCode,
+            stdout: entry.stdout.slice(-5000),
+            stderr: entry.stderr.slice(-2000),
+            running: entry.status === 'running',
+          };
+        }
+        
+        if (action === 'log') {
+          const entry = bgProcesses.get(args.session_id);
+          if (!entry) return { error: 'Process not found: ' + args.session_id };
+          const offset = args.offset || 0;
+          const limit = args.limit || 200;
+          const lines = entry.stdout.split('\n');
+          const slice = lines.slice(offset, offset + limit);
+          return {
+            session_id: args.session_id,
+            status: entry.status,
+            lines: slice,
+            total_lines: lines.length,
+            offset,
+            limit,
+          };
+        }
+        
+        if (action === 'write') {
+          const entry = bgProcesses.get(args.session_id);
+          if (!entry) return { error: 'Process not found: ' + args.session_id };
+          if (entry.status !== 'running') return { error: 'Process not running', status: entry.status };
+          try {
+            entry.proc.stdin.write(args.data || '');
+            return { written: true, session_id: args.session_id };
+          } catch (e) {
+            return { error: 'Write failed: ' + e.message };
+          }
+        }
+        
+        if (action === 'kill') {
+          const entry = bgProcesses.get(args.session_id);
+          if (!entry) return { error: 'Process not found: ' + args.session_id };
+          try {
+            entry.proc.kill('SIGTERM');
+            entry.status = 'killed';
+            return { killed: true, session_id: args.session_id };
+          } catch (e) {
+            return { error: 'Kill failed: ' + e.message };
+          }
+        }
+        
+        return { error: 'Unknown process action: ' + action };
+      }
+
+      // ─── Sub-Agent Tools ────────────────────────────────────────────────
+
+      case 'sessions_spawn': {
+        const result = await spawnSubAgent({
+          task: args.task,
+          model: args.model,
+          label: args.label,
+          timeout: args.timeout,
+          parentSessionId: currentParentSessionId,
+        });
+        return result;
+      }
+
+      case 'sessions_send': {
+        const sa = subAgents.get(args.session_id);
+        if (!sa) return { error: 'Sub-agent not found: ' + args.session_id };
+        if (sa.status !== 'running') return { error: 'Sub-agent not running', status: sa.status };
+        // Inject message into sub-agent's message history
+        sa.messages.push({ role: 'user', content: args.message });
+        return { sent: true, session_id: args.session_id };
+      }
+
+      case 'sessions_list': {
+        const list = [];
+        for (const [id, sa] of subAgents) {
+          list.push({
+            session_id: id,
+            label: sa.label,
+            task: sa.task.slice(0, 200),
+            model: sa.model,
+            status: sa.status,
+            started_at: new Date(sa.startedAt).toISOString(),
+            runtime_ms: Date.now() - sa.startedAt,
+            result_preview: sa.result ? sa.result.slice(0, 300) : null,
+          });
+        }
+        return { subagents: list, count: list.length };
+      }
+
+      case 'sessions_yield': {
+        const parentId = currentParentSessionId;
+        if (!parentId) return { error: 'No parent session context' };
+        const results = await waitForSubAgents(parentId);
+        if (results.length === 0) return { message: 'No running sub-agents to wait for' };
+        return {
+          completed: results.length,
+          results: results.map(sa => ({
+            id: sa.id,
+            label: sa.label,
+            status: sa.status,
+            result: sa.result ? sa.result.slice(0, 5000) : null,
+            error: sa.error,
+          })),
+        };
+      }
+
+      case 'session_status': {
+        const now = new Date();
+        return {
+          model: config.model,
+          version: VERSION,
+          uptime_seconds: Math.floor(process.uptime()),
+          memory_mb: Math.round(process.memoryUsage().rss / 1048576),
+          sessions: sessions.length,
+          bg_processes: bgProcesses.size,
+          sub_agents: subAgents.size,
+          tools_count: TOOL_DEFINITIONS.length,
+          time: now.toISOString(),
+        };
+      }
+
       default:
         return { error: `Unknown tool: ${name}` };
     }
@@ -3286,6 +3727,10 @@ async function executeToolInner(name, args) {
  * Continues until LLM gives a final text response or max steps reached.
  */
 async function agentChat(opts) {
+  // Track parent session for sub-agent spawning
+  const prevParent = currentParentSessionId;
+  if (opts.session_id) currentParentSessionId = opts.session_id;
+  
   const provInfo = resolveProvider(opts.model);
   if (!provInfo) return { error: 'unknown_model', message: `Cannot resolve provider for model: ${opts.model}` };
   if (!provInfo.api_key) return { error: 'missing_api_key', message: `API key not configured for provider: ${provInfo.provider}` };
@@ -3429,6 +3874,9 @@ async function agentChat(opts) {
 
 // ─── Agent Chat Stream (SSE + tool loop) ─────────────────────────────────────
 async function agentChatStream(opts, res) {
+  // Track parent session for sub-agent spawning
+  if (opts.session_id) currentParentSessionId = opts.session_id;
+  
   const provInfo = resolveProvider(opts.model);
   if (!provInfo) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });

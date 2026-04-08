@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-04-08
+
+Agent 能力对齐桌面端核心。
+
+### Added
+- Sub-agent system: sessions_spawn/send/list/yield
+- Process management: background exec + process tool (list/poll/log/write/kill)
+- session_status tool
+- exec: background mode, cwd parameter
+- 28 tools total (was 22)
+
 ## [1.1.0] - 2026-04-08
 
 v1.0.0 之后的全面升级，核心 Agent 能力对齐桌面端。

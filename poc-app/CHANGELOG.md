@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.2.0 (2026-04-08)
+
+Agent 能力对齐桌面端核心。
+
+### 新增
+- **子代理系统** — sessions_spawn/sessions_send/sessions_list/sessions_yield 4个工具
+  - Agent 可在对话中动态创建子代理执行独立任务
+  - 子代理有自己的 Agent Loop（支持工具调用）
+  - 支持 yield 等待所有子代理完成
+  - 超时保护（默认 300s）
+- **进程管理** — process 工具（list/poll/log/write/kill）
+  - exec 工具新增 background 模式（后台运行）
+  - exec 新增 cwd 参数（工作目录）
+  - 后台进程输出缓冲 + 自动清理
+- **session_status** — 查看模型/版本/内存/运行时间等
+
+### 改进
+- 工具数量从 22 增加到 28
+- Gateway 版本号体系统一为语义化版本
+
+---
+
 ## v1.1.0 (2026-04-08)
 
 v1.0.0 之后的全面升级，核心 Agent 能力对齐桌面端。

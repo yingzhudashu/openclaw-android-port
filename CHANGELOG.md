@@ -2,189 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.1.0] - 2026-04-08
 
-## [2.1.0] - 2026-04-07
+v1.0.0 之后的全面升级，核心 Agent 能力对齐桌面端。
 
-### Core Alignment
-- **MEMORY.md Injection** — Memory content now included in system_prompt (truncated at 2000 chars)
-- **Date/Time Injection** — Current date, time, and timezone injected into system_prompt
-- **Stream Fallback** — agentChatStream now tries fallback models on LLM failure
-- **Self-test API** — `/api/selftest` endpoint for internal health verification
+### Agent 核心
+- SSE 流式对话（逐字输出，支持 thinking/reasoning）
+- 完整的多步工具循环（agentChatStream + streamLLMWithTools）
+- 22 个工具：web_search、web_fetch、exec、file_read/write/edit/delete、create_dir、browser 系列、news_summary、skill_search/install、memory_search/store
+- 向量记忆（embedding + cosine similarity 语义搜索）
+- Skills 自动加载（扫描 skills/ 目录注入 system_prompt）
+- MEMORY.md + 日期时间自动注入 system_prompt
 
-### System Prompt Parity with Desktop
-Android system_prompt now includes:
-1. SOUL.md (identity)
-2. Session system_prompt (agent templates)
-3. Skills (auto-scanned from skills/ directory)
-4. MEMORY.md (truncated summary)
-5. AGENTS.md, USER.md, TOOLS.md, HEARTBEAT.md (workspace context)
-6. Current date/time + timezone
-7. Available tools description
+### 多模型
+- 5 家供应商支持（百炼/OpenAI/Anthropic/DeepSeek/SiliconFlow）
+- 模型 Fallback（主模型失败自动切换备用）
+- 聊天内快速切换模型
+- Token 估算与上下文自动截断
 
-## [2.0.0] - 2026-04-07
+### 用户体验
+- 深色模式（完整 Material Design 暗色主题）
+- 代码块复制按钮
+- Markdown 链接 + 裸链接点击跳转
+- 消息搜索（实时高亮 + 自动滚动定位）
+- 聊天导出为 Markdown
+- 日期分隔线
+- MEMORY.md 编辑器
 
-### ⭐ Reliability: Gateway Lifecycle
-- **Watchdog** — 30s periodic health check, auto-restart on failure (max 5 retries)
-- **Foreground Service** — Keeps Gateway alive, prevents Android from killing the process
-- **START_STICKY** — System auto-restarts service if killed
+### 系统能力
+- Cron 定时任务（WorkManager 调度 + 通知推送 + 管理 UI）
+- Heartbeat 心跳检查
+- Agent 模板（5 种预设子代理角色）
+- Gateway Watchdog（Node.js 崩溃自动重启）
+- Foreground Service（常驻运行）
+- 备份/恢复（配置 + 记忆 + 会话 + Skills）
+- 配置保护（升级/恢复不丢失 API Key）
+- WebViewBridge 浏览器控制（端口 18790）
 
-### Stability Improvements
-- NodeRunner now monitors Gateway health and auto-recovers from crashes
-- GatewayService runs as foreground notification ("OpenClaw 🦞 AI Gateway running")
-- Proper cleanup on stop (watchdog + thread cancellation)
+### 修复
+- news_summary 改用 RSS/Tavily 多源聚合
+- Android 无 Intl API 兼容
+- Gateway 连接超时、配置丢失、UTF-8 编码损坏等
 
-## [1.9.0] - 2026-04-07
-
-### Added
-- **3 New Agent Tools** (22 total)
-  - `edit_file` — Precise text replacement in files (matches desktop `edit` tool)
-  - `create_directory` — Create directories recursively
-  - `delete_file` — Remove files or directories
-- **Doctor API** — `/api/doctor` self-check endpoint (providers, model, workspace, skills, memory, embedding, browser)
-
-### Improved
-- Agent now has file editing capability matching desktop OpenClaw
-- Doctor checks: provider keys, default model resolution, workspace files, session count, skill count, memory status
-
-## [1.8.0] - 2026-04-07
-
-### Added
-- **Model Fallback** — When primary model fails, automatically tries other configured models
-- **In-Chat Model Switcher** — Tap model name in topbar to switch models mid-conversation
-- **Context Token Management** — Automatic message truncation at ~120K tokens to prevent context overflow
-- **Token Estimation** — `estimateTokens()` for mixed CJK/English text (~3 chars/token)
-
-### Improved
-- Gateway: `getFallbackModels()` returns all configured alternatives
-- Gateway: `truncateMessages()` keeps system messages + newest messages within token budget
-- Topbar shows current model with provider-colored emoji indicator
-
-## [1.7.0] - 2026-04-07
-
-### ⭐ CORE: Agent Stream (SSE + Tool Loop)
-This is the most critical alignment with desktop OpenClaw.
-
-- **All messages now use `/api/agent/chat` with streaming**
-  - Previously: regular chat used `/api/chat` (no tools), only file analysis used agent
-  - Now: every message goes through the agent loop with 19 tools available
-- **`agentChatStream()`** — New Gateway function combining SSE streaming with tool call loop
-  - LLM responses stream in real-time via SSE
-  - Tool calls detected from streaming chunks, executed server-side
-  - `event: tool_call` / `event: tool_result` / `event: done` SSE events
-- **`streamLLMWithTools()`** — Streaming LLM call that accumulates tool_calls from deltas
-- **Android client updated** to parse tool_call/tool_result events
-  - Shows "🔧 Calling `tool_name`..." during execution
-  - Shows "✅ `tool_name` done" on completion
-  - Final response cleaned of tool indicators
-
-### Available Tools (19)
-web_search, web_fetch, exec, read_file, write_file, list_files, memory_read, memory_write, device_info, get_weather, browser_navigate, browser_content, browser_eval, browser_screenshot, browser_click, browser_type, news_summary, skill_search, skill_install
-
-## [1.6.0] - 2026-04-07
-
-### Added
-- **🤖 Agent Templates** — New session picker with preset roles: Code, Research, Translator, Writer
-- **Sub-agent Simulation** — Each template creates a session with its own system_prompt
-- **Custom Welcome** — Agent-specific welcome messages
-
-### Improved
-- Session creation now supports system_prompt passthrough to Gateway
-- Gap analysis: Subagent gap partially closed via multi-session simulation
-
-## [1.5.0] - 2026-04-07
-
-### Added
-- **💓 Heartbeat Worker** — WorkManager-based periodic heartbeat (30min), mirrors desktop HEARTBEAT.md polling
-- **🔍 Memory Search API** — Gateway endpoint `/api/memory/search?q=` for grep-based memory search
-- **Heartbeat Toggle** — Settings switch to enable/disable heartbeat monitoring
-- **Notification Alerts** — Heartbeat results pushed when AI has something to report
-
-### Improved
-- Gateway: added memory search endpoint
-- Settings: heartbeat monitoring toggle
-
-## [1.4.0] - 2026-04-07
-
-### Added
-- **⏰ Cron Tab** — New tab for scheduled tasks (create/edit/delete/toggle)
-- **WorkManager Integration** — System-level scheduling, survives app kill
-- **Notification Push** — Cron results pushed via notification channel
-- **Date Separators** — "Today"/"Yesterday"/date between messages
-- **Dynamic Send/Voice** — Input-aware button switching
-
-### Gap Analysis
-- Added FEATURE_GAP.md documenting desktop vs Android feature parity
-- Cron/Heartbeat gap now closed
-
-## [1.3.1] - 2026-04-07
-
-### Added
-- **Dynamic Send/Voice Button** — Empty input shows mic, typing shows send
-- **Date Separators** — "Today", "Yesterday", or date shown between messages from different days
-- **Swipe to Delete** — Left-swipe on any message to remove it
-
-## [1.3.0] - 2026-04-07
-
-### Added
-- **Message Search** — Search bar in chat with real-time highlighting (yellow background on matches)
-- **Chat Export** — Export conversations as Markdown files to `Download/OpenClaw/`
-- Export option added to session long-press menu
-
-## [1.2.0] - 2026-04-07
-
-### Added
-- **Dark Mode** — Full dark theme with toggle in Settings, 106 semantic color replacements, DayNight support
-- **Voice Input** — Microphone button next to send, uses Android SpeechRecognizer
-- **App Shortcuts** — Long-press app icon for "New Chat" and "Voice Ask" shortcuts
-- **MEMORY.md Editor** — New Memory section in Settings for editing long-term memory
-- **Clear Context** — Third option in session menu to clear conversation context
-- **RECORD_AUDIO permission** for voice input
-
-### Changed
-- 106 hardcoded colors replaced with semantic color resources for theme support
-- Night mode colors for all UI elements
-
-## [1.1.0] - 2026-04-07
-
-### Added
-- **SSE Streaming** — Real-time streaming responses with typing effect
-- **Reasoning Display** — Collapsible thinking/reasoning section in AI messages
-- **Tool Call Visualization** — Show tool usage steps during agent execution
-- **Network Status Banner** — Red banner when offline, auto-hide on reconnect with animation
-- **Exponential Backoff Retry** — Auto-retry on network errors (1s→3s, max 2 attempts)
-- **Send Failed Retry** — Tap-to-retry button on failed user messages
-- **Gateway Health Check** — 30-second heartbeat, toast on 3 consecutive failures
-- **Draft Saving** — Input text saved/restored per session via SharedPreferences
-- **Code Block Copy Button** — `[Copy Code]` link after each code block
-- **Link Click Handling** — Markdown `[text](url)` and bare `https://` links open in browser
-- **LinkMovementMethod** — Clickable spans in AI messages
-- **ACCESS_NETWORK_STATE permission** for connectivity monitoring
-
-### Fixed
-- HTML error responses from providers now show friendly error messages
-- Client timeout increased to 10 minutes for long agent runs
+### 移除
+- 语音输入功能（fabVoice + RECORD_AUDIO 权限）
 
 ## [1.0.0] - 2026-04-06
 
-### Added
-- Multi-provider LLM configuration (Bailian, OpenAI, Anthropic, DeepSeek)
-- Custom provider support with editable model lists
-- Default model selection with provider-model coupling
-- Embedding model configuration (Bailian, OpenAI, SiliconFlow)
-- Session management: create, switch, rename, delete
-- Persistent chat history stored on-device via embedded gateway
-- Markdown rendering with code syntax highlighting
-- Image analysis (camera + gallery)
-- File analysis with text extraction
-- Workspace file editor (SOUL.md, USER.md, HEARTBEAT.md, AGENTS.md, TOOLS.md)
-- Skills installation and management
-- Memory mode selection (basic / vector)
-- Max tool call steps configuration
-- One-tap backup to Download/OpenClaw/ with path display
-- One-tap restore with file picker opening to backup folder
-- Bilingual UI (Chinese default, English)
-- Bot avatar tap to switch model/provider per-session
-- Session isolation for concurrent async operations
-- Welcome message persistence across session switches
+首个发布版本。
+
+- 基础聊天界面（Fragment + RecyclerView + XML）
+- Node.js Gateway 内嵌运行
+- 多会话管理（创建/切换/重命名）
+- 多供应商 LLM 配置（百炼/OpenAI/Anthropic/DeepSeek）
+- Markdown 渲染 + 代码高亮
+- 图片/文件分析
+- Workspace 文件编辑器
+- Skills 安装管理
+- 备份/恢复
+- 双语 UI（中/英）

@@ -1,126 +1,91 @@
-> **This project was independently developed by [OpenClaw](https://openclaw.ai) AI agent. The human contributor served solely as a product manager, providing requirements through natural language.**
-
 # OpenClaw Android
 
-An open-source Android client for [OpenClaw](https://github.com/openclaw/openclaw) — a personal AI assistant platform.
+**AI 个人助手，完全在手机端侧运行。**
 
-## ✨ Features
+> 🤖 本项目由 [OpenClaw](https://openclaw.ai) AI 助手独立开发，人类负责需求和验收。
 
-- **Streaming Responses** — Real-time SSE streaming with typing effect, reasoning display, and tool call visualization
-- **Multi-provider LLM Support** — Configure multiple AI providers (Alibaba Bailian, OpenAI, Anthropic, DeepSeek) with independent API keys and model lists
-- **Session Management** — Create, switch, rename, and delete chat sessions with persistent history
-- **Markdown Rendering** — Rich message display with code highlighting, inline formatting, and clickable links
-- **Code Block Copy** — One-tap copy button on code blocks for easy sharing
-- **Link Handling** — Clickable Markdown links `[text](url)` and bare URLs `https://...`
-- **Network Resilience** — Network status banner, exponential backoff retry (1s→3s), send-failed retry button
-- **Gateway Health Check** — 30-second heartbeat monitoring with auto-reconnect
-- **Draft Saving** — Input text preserved when switching sessions via SharedPreferences
-- **Image Analysis** — Send images for AI-powered visual analysis
-- **File Analysis** — Attach and analyze text files within conversations
-- **Embedding Model** — Optional vector memory with configurable embedding providers
-- **Workspace Files** — Edit SOUL.md, USER.md, HEARTBEAT.md, AGENTS.md, TOOLS.md directly in-app
-- **Skills Management** — Install and manage AI skills
-- **Backup & Restore** — One-tap backup to `Download/OpenClaw/` with restore file picker
-- **Bilingual UI** — Full Chinese and English localization
-- **Embedded Engine** — Self-contained Node.js gateway runs locally on-device
+OpenClaw Android 将完整的 AI Agent 能力带到 Android 手机上。通过内嵌 Node.js Gateway，实现了与桌面端对齐的核心功能——包括多步工具调用、向量记忆、Skills 加载和浏览器控制。
 
-## 📸 Screenshots
+## 核心特性
 
-_Coming soon_
+### 🧠 Agent 能力
+- **SSE 流式对话** — 实时逐字输出，支持 thinking/reasoning 显示
+- **22+ 工具** — web_search、web_fetch、exec、file ops、browser control、news_summary、skill management、memory search 等
+- **多步工具循环** — LLM 自主决策调用工具，最多 25 步自动推理
+- **向量记忆** — embedding + cosine similarity 语义搜索
+- **Skills 自动加载** — 扫描 skills/ 目录注入 system_prompt
 
-## 🚀 Getting Started
+### 🔧 多模型支持
+- **5 家供应商** — 百炼(通义千问)、OpenAI、Anthropic、DeepSeek、SiliconFlow
+- **模型 Fallback** — 主模型失败自动切换备用模型
+- **聊天内快速切换** — 随时更换模型，无需进设置
 
-### Prerequisites
+### 📱 用户体验
+- 深色模式 · 代码块复制 · 链接点击
+- 消息搜索（实时高亮 + 自动滚动定位）
+- 聊天导出 · 备份/恢复
 
-- Android 7.0 (API 24) or higher
-- Internet connection for LLM API calls
+### ⚙️ 系统能力
+- Cron 定时任务 + Heartbeat 心跳
+- Agent 模板（预设子代理角色）
+- Gateway Watchdog 自动重启 + Foreground Service 常驻
+- 配置保护（升级不丢失 API Key）
+- WebViewBridge 浏览器控制
 
-### Installation
+## 快速开始
 
-1. Download the latest APK from [Releases](https://github.com/yingzhudashu/openclaw-android-port/releases)
-2. Install on your Android device
-3. Open the app → Settings → Configure at least one model provider with an API key
-4. Set your default model and start chatting
+### 安装
+1. 从 [Releases](https://github.com/yingzhudashu/openclaw-android-port/releases) 下载最新 APK
+2. 安装到 Android 8.0+ 设备（仅支持 arm64）
+3. 进入设置，配置至少一个 LLM 供应商的 API Key
+4. 开始对话
 
-### Build from Source
-
+### 从源码构建
 ```bash
 git clone https://github.com/yingzhudashu/openclaw-android-port.git
 cd openclaw-android-port/poc-app
+# 需要 Android Studio JBR 17 + SDK 34
 ./gradlew assembleDebug
 ```
+APK 输出：`app/build/outputs/apk/debug/app-debug.apk`
 
-The APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
-
-## 🏗️ Architecture
+## 架构
 
 ```
-poc-app/
-├── app/src/main/
-│   ├── java/ai/openclaw/poc/     # Kotlin source
-│   │   ├── MainActivity.kt       # Single-activity host
-│   │   ├── ChatFragment.kt       # Chat UI & session management
-│   │   ├── SettingsFragment.kt   # Settings & provider configuration
-│   │   ├── MessageAdapter.kt     # Message rendering (Markdown, code)
-│   │   ├── Session.kt            # Session data model & adapter
-│   │   ├── ApiClient.kt          # HTTP client utilities
-│   │   └── LocaleHelper.kt       # i18n language switching
-│   ├── assets/openclaw-engine/
-│   │   ├── android-gateway.cjs   # Embedded Node.js gateway
-│   │   └── openclaw.json         # Engine configuration
-│   └── res/
-│       ├── layout/               # XML layouts
-│       ├── values/               # Chinese strings (default)
-│       └── values-en/            # English strings
+Android App (Kotlin)
+    │
+    ├── ChatFragment ── MessageAdapter
+    ├── SettingsFragment ── CronFragment
+    ├── StatusFragment ── GatewayService
+    │                        │
+    ▼                        ▼
+ApiClient (HTTP) ──► NodeRunner (ProcessBuilder)
+    │                        │
+    ▼                        ▼
+    Node.js Gateway (:18789)
+    ├── LLM API (multi-provider)
+    ├── Agent Loop (tool calls)
+    ├── 22 Tools
+    ├── Vector Memory
+    ├── Skills Loader
+    ├── Cron Manager
+    └── Session Manager
 ```
 
-### Key Design Decisions
+详细架构和项目结构见 [poc-app/README.md](poc-app/README.md)。
 
-- **On-device Gateway**: The LLM gateway runs as an embedded Node.js process inside the app, keeping all configuration and session data local.
-- **Provider-Model Coupling**: Models belong to providers. Deleting a provider removes its models from the selection list.
-- **Session Isolation**: Each async operation captures the session ID at dispatch time and verifies it on completion to prevent cross-session contamination during rapid switching.
-- **Single Source of Truth**: The gateway `config.json` is the authoritative source for model, provider, and all settings. SharedPreferences serves only as a cache for the message adapter.
+## 隐私与安全
 
-## ⚙️ Configuration
+- **无硬编码 API Key** — 所有凭证由用户输入，仅存储在设备本地
+- **本地存储** — 会话、配置、备份均在设备上
+- **无遥测** — 不收集或传输任何使用数据
 
-### Supported Providers
+## 文档
 
-| Provider | Base URL | Example Models |
-|----------|----------|----------------|
-| Alibaba Bailian | `https://dashscope.aliyuncs.com/compatible-mode/v1` | qwen3.5-plus |
-| OpenAI | `https://api.openai.com/v1` | gpt-4o |
-| Anthropic | `https://api.anthropic.com/v1` | claude-sonnet-4-6 |
-| DeepSeek | `https://api.deepseek.com/v1` | deepseek-chat |
+- [CHANGELOG.md](CHANGELOG.md) — 版本变更记录
+- [CONTRIBUTING.md](CONTRIBUTING.md) — 贡献指南
+- [poc-app/README.md](poc-app/README.md) — 详细架构与项目结构
 
-You can add custom providers with any OpenAI-compatible API endpoint.
+## License
 
-### Embedding Providers
-
-| Provider | Base URL | Model |
-|----------|----------|-------|
-| Bailian | `https://dashscope.aliyuncs.com/compatible-mode/v1` | text-embedding-v3 |
-| OpenAI | `https://api.openai.com/v1` | text-embedding-3-small |
-| SiliconFlow | `https://api.siliconflow.cn/v1` | BAAI/bge-m3 |
-
-## 🔒 Privacy & Security
-
-- **No hardcoded API keys** — All credentials are entered by the user and stored only on-device
-- **Local storage** — Sessions, configuration, and backups stay on the device
-- **No telemetry** — The app does not collect or transmit usage data
-
-## 📋 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for release history.
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## 📄 License
-
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- [OpenClaw](https://github.com/openclaw/openclaw) — The AI assistant platform this client is built for
-- Built entirely by an AI agent (OpenClaw) with human product management
+MIT — 详见 [LICENSE](LICENSE)

@@ -14,16 +14,16 @@ Device Control API, Permission Management, Community Docs, and Critical Bug Fixe
 ### Added
 
 #### Device Control API (DeviceControlApi)
-- New \DeviceControlApi.kt\ — local HTTP server on \127.0.0.1:18791\
-- \POST /device/camera/snap\ — capture photo via system camera intent, return base64
-- \GET /device/location\ — get current GPS coordinates
-- \GET /device/notifications\ — read recent system notifications
-- \CameraCaptureActivity.kt\ — transparent activity for background camera requests
-- \PhotoStore.kt\ — photo buffer with async wait and timeout protection
-- \ComprehensiveTest.kt\ — integration test suite (Gateway API, Browser Bridge, Device API, stress test)
+- New `DeviceControlApi.kt` — local HTTP server on `127.0.0.1:18791`
+- `POST /device/camera/snap` — capture photo via system camera intent, return base64
+- `GET /device/location` — get current GPS coordinates
+- `GET /device/notifications` — read recent system notifications
+- `CameraCaptureActivity.kt` — transparent activity for background camera requests
+- `PhotoStore.kt` — photo buffer with async wait and timeout protection
+- `ComprehensiveTest.kt` — integration test suite (Gateway API, Browser Bridge, Device API, stress test)
 
 #### Permission Management
-- \PermissionManager.kt\ — centralized runtime permission manager
+- `PermissionManager.kt` — centralized runtime permission manager
   - Location (ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION)
   - Camera (CAMERA)
   - Microphone (RECORD_AUDIO)
@@ -31,34 +31,34 @@ Device Control API, Permission Management, Community Docs, and Critical Bug Fixe
   - Storage (READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE, version-adaptive)
 - Auto-request missing permissions on first launch
 - Settings page shows permission status with link to system settings
-- \AndroidManifest.xml\ updated with complete permission declarations
+- `AndroidManifest.xml` updated with complete permission declarations
 
 #### Community Docs
-- \LICENSE\ (MIT)
-- \CONTRIBUTING.md\ — contribution guide with dev setup, code standards, PR checklist
-- \SECURITY.md\ — security policy with known limitations and best practices
-- \CODE_OF_CONDUCT.md\ — Contributor Covenant 2.1
-- \.gitignore\ — comprehensive rules covering Android/IDE/OS/runtime data
-- Rewrote \README.md\ with architecture, port allocation, tech stack, dev guide, roadmap
-- Updated \CHANGELOG.md\ to Keep a Changelog format
+- `LICENSE` (MIT)
+- `CONTRIBUTING.md` — contribution guide with dev setup, code standards, PR checklist
+- `SECURITY.md` — security policy with known limitations and best practices
+- `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1
+- `.gitignore` — comprehensive rules covering Android/IDE/OS/runtime data
+- Rewrote `README.md` with architecture, port allocation, tech stack, dev guide, roadmap
+- Updated `CHANGELOG.md` to Keep a Changelog format
 
 #### Gateway Enhancements
-- Cron task persistence (\cron_tasks.json\), survives restarts
-- Gateway version bumped to \1.3.0-android\
+- Cron task persistence (`cron_tasks.json`), survives restarts
+- Gateway version bumped to `1.3.0-android`
 
 ### Fixed
 
 #### Multimodal Image Token Estimation (Critical Bug)
-- **Issue**: \	runcateMessages\ used \JSON.stringify(m.content)\ to estimate tokens. A 500KB image's base64 (~680K chars) was miscounted as ~227,000 tokens, far exceeding \MAX_CONTEXT_TOKENS\ (120,000), causing the image message to be dropped. The LLM only received plain text "Please analyze this image".
-- **Fix**: New \estimateMessageTokens()\ function distinguishes \	ype: 'text'\ from \	ype: 'image_url'\, counting images at ~800 tokens each (Vision API standard).
+- **Issue**: `	runcateMessages` used `JSON.stringify(m.content)` to estimate tokens. A 500KB image's base64 (~680K chars) was miscounted as ~227,000 tokens, far exceeding `MAX_CONTEXT_TOKENS` (120,000), causing the image message to be dropped. The LLM only received plain text "Please analyze this image".
+- **Fix**: New `estimateMessageTokens()` function distinguishes `	ype: 'text'` from `	ype: 'image_url'`, counting images at ~800 tokens each (Vision API standard).
 - **Enhancement**: Truncation logic now always preserves the latest user message.
 
 #### Health Check Lifecycle
-- Fixed health check continuing to schedule after \onDestroyView\ (Fix #5/#9)
-- New \healthCheckRunning\ flag stops scheduling when view is destroyed
+- Fixed health check continuing to schedule after `onDestroyView` (Fix #5/#9)
+- New `healthCheckRunning` flag stops scheduling when view is destroyed
 
 #### Session Management
-- \createNewSession()\ converted to \suspend\ function, returns Boolean for success/failure
+- `createNewSession()` converted to `suspend` function, returns Boolean for success/failure
 - Welcome message persisted to Gateway server, survives session switches
 - Fixed pending file/image restoration after retry (Fix #7/#8)
 

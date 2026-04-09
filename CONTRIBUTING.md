@@ -15,48 +15,48 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
    - **Environment**: Android version, device model, app version
    - **Steps to reproduce**
    - **Expected vs actual behavior**
-   - **Logs**: \db logcat | grep -E "NodeRunner|Gateway|ChatFragment"\
+   - **Logs**: `db logcat | grep -E "NodeRunner|Gateway|ChatFragment"`
    - Screenshots/screen recordings (recommended)
 
 ### Suggesting Features
 
 1. Open an issue first to discuss the idea
-2. Prefix with \[Feature Request]\
+2. Prefix with `[Feature Request]`
 3. Wait for maintainer confirmation before coding
 
 ### Pull Requests
 
 #### Development Setup
 
-\\\ash
+```ash
 git clone https://github.com/yingzhudashu/openclaw-android-port.git
 cd openclaw-android-port/poc-app
 
 # Set JAVA_HOME to Android Studio's JBR
 ./gradlew assembleDebug
-\\\
+```
 
 #### Code Standards
 
 - **Kotlin**: Follow [official Kotlin conventions](https://kotlinlang.org/docs/coding-conventions.html)
-- **Node.js**: StandardJS style, CommonJS format (\.cjs\ extension)
-- **Naming**: Kotlin uses \camelCase\/\PascalCase\, JS uses \camelCase\
+- **Node.js**: StandardJS style, CommonJS format (`.cjs` extension)
+- **Naming**: Kotlin uses `camelCase`/`PascalCase`, JS uses `camelCase`
 - **Comments**: All public APIs must have doc comments; complex logic must have inline comments
-- **Strings**: All user-visible text must use \strings.xml\ resources (multi-language support)
+- **Strings**: All user-visible text must use `strings.xml` resources (multi-language support)
 
 #### Commit Messages
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-\\\
+```
 <type>(<scope>): <description>
-\\\
+```
 
-Types: \eat\, \ix\, \docs\, \style\, \efactor\, \perf\, \	est\, \ci\, \chore\
+Types: `eat`, `ix`, `docs`, `style`, `efactor`, `perf`, `	est`, `ci`, `chore`
 
 #### PR Checklist
 
-- [ ] Code compiles (\./gradlew assembleDebug\ passes)
+- [ ] Code compiles (`./gradlew assembleDebug` passes)
 - [ ] Core features tested on real device
 - [ ] Commit messages follow Conventional Commits
 - [ ] Documentation updated for new features
@@ -64,15 +64,15 @@ Types: \eat\, \ix\, \docs\, \style\, \efactor\, \perf\, \	est\, \ci\, \chore\
 
 ### Branch Strategy
 
-- \main\ — stable branch, all releases based on this
-- \eature/*\ — feature branches, merged to \main\
-- \ix/*\ — fix branches, merged to \main\ (hotfix)
+- `main` — stable branch, all releases based on this
+- `eature/*` — feature branches, merged to `main`
+- `ix/*` — fix branches, merged to `main` (hotfix)
 
 ## Testing
 
 ### Integration Test
 
-The app includes a built-in test suite (\ComprehensiveTest.kt\) accessible from Settings:
+The app includes a built-in test suite (`ComprehensiveTest.kt`) accessible from Settings:
 - Gateway API (health, chat, sessions, tools)
 - Browser Bridge connectivity
 - Device Control API availability
@@ -90,9 +90,9 @@ Recommended scenarios on real Android device:
 
 ## Release Process
 
-1. Update \CHANGELOG.md\
-2. Bump \ersionCode\ and \ersionName\ in \pp/build.gradle.kts\
-3. Create Git tag: \git tag v1.x.x\
+1. Update `CHANGELOG.md`
+2. Bump `ersionCode` and `ersionName` in `pp/build.gradle.kts`
+3. Create Git tag: `git tag v1.x.x`
 4. Push and create GitHub Release
 
 ## License

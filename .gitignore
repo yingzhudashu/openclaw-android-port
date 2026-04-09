@@ -1,54 +1,45 @@
-# Build outputs
-poc-app/app/build/
-poc-app/build/
-poc-app/.gradle/
-poc-app/app/.cxx/
+﻿# Build outputs
+*.apk
+*.aab
+*.dex
+build/
+.gradle/
 
 # IDE
 .idea/
 *.iml
+*.ipr
+*.iws
+.kotlin/
+.cxx/
+
+# Local config
 local.properties
 
-# Gradle wrapper jar (keep wrapper properties)
-poc-app/gradle/wrapper/gradle-wrapper.jar
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Never commit config with API keys
-poc-app/app/src/main/assets/openclaw-engine/config.json
-
-# APK outputs
-*.apk
-
-# Development intermediate directories (not part of the app)
+# Heavy directories (do not track)
 dist/
+native-libs/
 node_modules/
-package/
+
+# Runtime data
 android-data/
 data/
-engine/
-scripts/
-app-shell/
-native-libs/
 
-# Node headers (bundled with libnode.so, not needed in repo)
-poc-app/app/src/main/jniLibs/arm64-v8a/include/
+# poc-app runtime
+poc-app/app/src/main/assets/openclaw-engine/openclaw.json
+poc-app/app/src/main/assets/openclaw-engine/sessions/
+poc-app/app/src/main/assets/openclaw-engine/memory/
+poc-app/app/src/main/assets/openclaw-engine/MEMORY.md
+poc-app/app/src/main/assets/openclaw-engine/cron_tasks.json
+poc-app/app/src/main/assets/openclaw-engine/photos/
 
-# Root-level dev artifacts
-nodejs-mobile-react-native-*.tgz
-package-lock.json
-package.json
+# Logs
+*.log
+poc-app/app/src/main/jniLibs/*/include/
 
-# Dev scripts (keep repo clean)
-fix_*.py
-scan_*.py
-set_*.py
-patch_*.py
-update_*.py
-*_scan.txt
-hardcoded_strings.txt
-
-# Test scripts
-poc-app/test_*.ps1
+# Node.js binaries (download from Node.js releases)
+package/android/libnode/bin/

@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 所有重要变更都将记录在此文件中。
 
@@ -13,36 +13,36 @@
 
 本版本重点为 App 新增了设备能力接口（相机拍照、GPS 定位、通知读取），重构了运行时权限管理体系，修复了多模态图片 token 估算的严重 Bug，并全面补充了 GitHub 社区健康文件。
 
-### 🆕 新增
+### 新增
 
 #### 设备控制 API（DeviceControlApi）
-- 新增 `DeviceControlApi.kt`，在 `127.0.0.1:18791` 端口提供本地 HTTP 接口
-- `POST /device/camera/snap` — 调用系统相机拍照，返回 base64 图片数据
-- `GET /device/location` — 获取当前 GPS 经纬度
-- `GET /device/notifications` — 读取最近系统通知列表
-- 配套新增 `CameraCaptureActivity.kt`（透明 Activity，后台触发相机 Intent）
-- 配套新增 `PhotoStore.kt`（照片缓冲区，支持异步等待 + 超时保护）
+- 新增 \DeviceControlApi.kt\，在 \127.0.0.1:18791\ 端口提供本地 HTTP 接口
+- \POST /device/camera/snap\ — 调用系统相机拍照，返回 base64 图片数据
+- \GET /device/location\ — 获取当前 GPS 经纬度
+- \GET /device/notifications\ — 读取最近系统通知列表
+- 配套新增 \CameraCaptureActivity.kt\（透明 Activity，后台触发相机 Intent）
+- 配套新增 \PhotoStore.kt\（照片缓冲区，支持异步等待 + 超时保护）
 
 #### 权限管理系统
-- 新增 `PermissionManager.kt`，统一管理 5 类运行时权限：
-  - 📍 **位置** — ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION
-  - 📷 **相机** — CAMERA
-  - 🎤 **麦克风** — RECORD_AUDIO
-  - 🔔 **通知** — POST_NOTIFICATIONS（Android 13+）
-  - 📁 **存储** — READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE（版本自适应）
-- `MainActivity` 首次启动自动请求缺失权限
+- 新增 \PermissionManager.kt\，统一管理 5 类运行时权限：
+  - 位置 — ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION
+  - 相机 — CAMERA
+  - 麦克风 — RECORD_AUDIO
+  - 通知 — POST_NOTIFICATIONS（Android 13+）
+  - 存储 — READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE（版本自适应）
+- \MainActivity\ 首次启动自动请求缺失权限
 - 设置页新增权限状态展示，可一键跳转系统设置管理
-- `AndroidManifest.xml` 补充完整权限声明
+- \AndroidManifest.xml\ 补充完整权限声明
 
 #### 社区规范文件
-- 新增 `LICENSE`（MIT）
-- 新增 `CONTRIBUTING.md`（贡献指南，含开发环境搭建、代码规范、PR Checklist）
-- 新增 `SECURITY.md`（安全策略，含已知安全限制、最佳实践）
-- 新增 `CODE_OF_CONDUCT.md`（Contributor Covenant 2.1 行为准则）
-- 新增 `.gitignore`（覆盖 Android/IDE/OS/运行时数据等完整规则）
+- 新增 \LICENSE\（MIT）
+- 新增 \CONTRIBUTING.md\（贡献指南，含开发环境搭建、代码规范、PR Checklist）
+- 新增 \SECURITY.md\（安全策略，含已知安全限制、最佳实践）
+- 新增 \CODE_OF_CONDUCT.md\（Contributor Covenant 2.1 行为准则）
+- 新增 \.gitignore\（覆盖 Android/IDE/OS/运行时数据等完整规则）
 
 #### 集成测试
-- 新增 `ComprehensiveTest.kt`，内置测试套件覆盖：
+- 新增 \ComprehensiveTest.kt\，内置测试套件覆盖：
   - Gateway API（健康检查、聊天、会话、工具列表）
   - Browser Bridge 连通性
   - Device Control API 可用性
@@ -50,22 +50,22 @@
 - 可在设置页一键运行，输出结构化报告
 
 #### Gateway 增强
-- Cron 任务持久化存储（`cron_tasks.json`），重启不丢失
-- Gateway 版本号升级为 `1.3.0-android`
+- Cron 任务持久化存储（\cron_tasks.json\），重启不丢失
+- Gateway 版本号升级为 \1.3.0-android\
 
-### 🔧 修复
+### 修复
 
 #### 多模态图片 token 估算（严重 Bug）
-- **问题**：`truncateMessages` 使用 `JSON.stringify(m.content)` 估算 token，500KB 图片的 base64 编码（~68 万字符）被误算为 ~227,000 tokens，远超 `MAX_CONTEXT_TOKENS`（120,000）导致图片消息被丢弃，LLM 仅收到纯文本 "请分析这张图片"
-- **修复**：新增 `estimateMessageTokens()` 函数，区分 `type: 'text'` 和 `type: 'image_url'`，图片按 Vision API 标准固定估算 ~800 tokens/张
+- **问题**：\	runcateMessages\ 使用 \JSON.stringify(m.content)\ 估算 token，500KB 图片的 base64 编码（~68 万字符）被误算为 ~227,000 tokens，远超 \MAX_CONTEXT_TOKENS\（120,000）导致图片消息被丢弃，LLM 仅收到纯文本 "请分析这张图片"
+- **修复**：新增 \estimateMessageTokens()\ 函数，区分 \	ype: 'text'\ 和 \	ype: 'image_url'\，图片按 Vision API 标准固定估算 ~800 tokens/张
 - **增强**：截断逻辑强制保留最新用户消息，确保当前轮次内容不会丢失
 
 #### 健康检查生命周期
-- 修复 `ChatFragment` 中 health check 在 `onDestroyView` 后仍被调度执行的问题（Fix #5/#9）
-- 新增 `healthCheckRunning` 标志位，视图销毁时立即停止调度
+- 修复 \ChatFragment\ 中 health check 在 \onDestroyView\ 后仍被调度执行的问题（Fix #5/#9）
+- 新增 \healthCheckRunning\ 标志位，视图销毁时立即停止调度
 
 #### 会话创建
-- `createNewSession()` 改为 `suspend` 函数，返回 Boolean 标识成功/失败
+- \createNewSession()\ 改为 \suspend\ 函数，返回 Boolean 标识成功/失败
 - 欢迎语自动保存到 Gateway 服务端，跨会话切换不丢失
 - 修复重试后 pending 文件/图片恢复（Fix #7/#8）
 
@@ -73,12 +73,12 @@
 - 权限状态展示集成
 - 布局文件优化
 
-### 📝 文档
-- 全面重写 `README.md`，新增架构详解、端口分配表、技术栈说明、开发指南、路线图
-- 更新 `CHANGELOG.md` 格式，对齐 Keep a Changelog 规范
+### 文档
+- 全面重写 \README.md\，新增架构详解、端口分配表、技术栈说明、开发指南、路线图
+- 更新 \CHANGELOG.md\ 格式，对齐 Keep a Changelog 规范
 - 新增完整社区规范文件（5 个）
 
-### 📊 统计数据
+### 统计数据
 - 新增 5 个 Kotlin 文件
 - 修改 13 个文件，+1542 / -700 行
 - Gateway 核心代码 4000+ 行

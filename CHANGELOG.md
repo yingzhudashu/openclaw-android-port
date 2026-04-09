@@ -1,74 +1,157 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2026-04-08
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
 
-Agent 能力对齐桌面端核心。
+---
+
+## [1.3.0] - 2026-04-09
+
+Device Control API, Permission Management, Community Docs, and Critical Bug Fixes.
 
 ### Added
-- Sub-agent system: sessions_spawn/send/list/yield
-- Process management: background exec + process tool (list/poll/log/write/kill)
-- session_status tool
-- exec: background mode, cwd parameter
-- 28 tools total (was 22)
+
+#### Device Control API (DeviceControlApi)
+- New \DeviceControlApi.kt\ — local HTTP server on \127.0.0.1:18791\
+- \POST /device/camera/snap\ — capture photo via system camera intent, return base64
+- \GET /device/location\ — get current GPS coordinates
+- \GET /device/notifications\ — read recent system notifications
+- \CameraCaptureActivity.kt\ — transparent activity for background camera requests
+- \PhotoStore.kt\ — photo buffer with async wait and timeout protection
+- \ComprehensiveTest.kt\ — integration test suite (Gateway API, Browser Bridge, Device API, stress test)
+
+#### Permission Management
+- \PermissionManager.kt\ — centralized runtime permission manager
+  - Location (ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION)
+  - Camera (CAMERA)
+  - Microphone (RECORD_AUDIO)
+  - Notifications (POST_NOTIFICATIONS, Android 13+)
+  - Storage (READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE, version-adaptive)
+- Auto-request missing permissions on first launch
+- Settings page shows permission status with link to system settings
+- \AndroidManifest.xml\ updated with complete permission declarations
+
+#### Community Docs
+- \LICENSE\ (MIT)
+- \CONTRIBUTING.md\ — contribution guide with dev setup, code standards, PR checklist
+- \SECURITY.md\ — security policy with known limitations and best practices
+- \CODE_OF_CONDUCT.md\ — Contributor Covenant 2.1
+- \.gitignore\ — comprehensive rules covering Android/IDE/OS/runtime data
+- Rewrote \README.md\ with architecture, port allocation, tech stack, dev guide, roadmap
+- Updated \CHANGELOG.md\ to Keep a Changelog format
+
+#### Gateway Enhancements
+- Cron task persistence (\cron_tasks.json\), survives restarts
+- Gateway version bumped to \1.3.0-android\
+
+### Fixed
+
+#### Multimodal Image Token Estimation (Critical Bug)
+- **Issue**: \	runcateMessages\ used \JSON.stringify(m.content)\ to estimate tokens. A 500KB image's base64 (~680K chars) was miscounted as ~227,000 tokens, far exceeding \MAX_CONTEXT_TOKENS\ (120,000), causing the image message to be dropped. The LLM only received plain text "Please analyze this image".
+- **Fix**: New \estimateMessageTokens()\ function distinguishes \	ype: 'text'\ from \	ype: 'image_url'\, counting images at ~800 tokens each (Vision API standard).
+- **Enhancement**: Truncation logic now always preserves the latest user message.
+
+#### Health Check Lifecycle
+- Fixed health check continuing to schedule after \onDestroyView\ (Fix #5/#9)
+- New \healthCheckRunning\ flag stops scheduling when view is destroyed
+
+#### Session Management
+- \createNewSession()\ converted to \suspend\ function, returns Boolean for success/failure
+- Welcome message persisted to Gateway server, survives session switches
+- Fixed pending file/image restoration after retry (Fix #7/#8)
+
+### Stats
+- 25 files changed, +3658/-869 lines
+- 5 new Kotlin files
+- Gateway core at 4000+ lines
+
+---
+
+## [1.2.0] - 2026-04-08
+
+Agent capabilities aligned with desktop core.
+
+### Added
+- **Sub-agent system** — sessions_spawn/sessions_send/sessions_list/sessions_yield
+  - Dynamic sub-agent creation with independent Agent Loop
+  - Yield to wait for all sub-agents with timeout protection (default 300s)
+- **Process management** — process tool (list/poll/log/write/kill)
+  - exec: background mode + cwd parameter
+  - Buffered output + auto-cleanup
+- **session_status** — view model/version/memory/runtime
+
+### Improved
+- Tools increased from 22 to 28
+- Gateway versioning unified to semantic versioning
+
+---
 
 ## [1.1.0] - 2026-04-08
 
-v1.0.0 之后的全面升级，核心 Agent 能力对齐桌面端。
+Core agent capabilities aligned with desktop.
 
-### Agent 核心
-- SSE 流式对话（逐字输出，支持 thinking/reasoning）
-- 完整的多步工具循环（agentChatStream + streamLLMWithTools）
-- 22 个工具：web_search、web_fetch、exec、file_read/write/edit/delete、create_dir、browser 系列、news_summary、skill_search/install、memory_search/store
-- 向量记忆（embedding + cosine similarity 语义搜索）
-- Skills 自动加载（扫描 skills/ 目录注入 system_prompt）
-- MEMORY.md + 日期时间自动注入 system_prompt
+### Agent Core
+- SSE streaming (token-by-token output with thinking/reasoning)
+- Full multi-step tool loop (agentChatStream + streamLLMWithTools)
+- 22 tools: web_search, web_fetch, exec, file_read/write/edit/delete, create_dir, browser_navigate/eval/click/type/content/screenshot, news_summary, skill_search/install, memory_search/store
+- Vector memory (embedding + cosine similarity)
+- Skills auto-loading (scans skills/ directory into system_prompt)
+- MEMORY.md + datetime auto-injection
 
-### 多模型
-- 5 家供应商支持（百炼/OpenAI/Anthropic/DeepSeek/SiliconFlow）
-- 模型 Fallback（主模型失败自动切换备用）
-- 聊天内快速切换模型
-- Token 估算与上下文自动截断
+### Multi-Model
+- 5 providers (DashScope/OpenAI/Anthropic/DeepSeek/SiliconFlow)
+- Model Fallback (auto-switch on failure)
+- In-chat model switching
+- Token estimation + context auto-truncation
 
-### 用户体验
-- 深色模式（完整 Material Design 暗色主题）
-- 代码块复制按钮
-- Markdown 链接 + 裸链接点击跳转
-- 消息搜索（实时高亮 + 自动滚动定位）
-- 聊天导出为 Markdown
-- 日期分隔线
-- MEMORY.md 编辑器
+### UX
+- Dark mode (Material Design)
+- Code block copy button
+- Markdown links + bare link click
+- Message search (highlight + auto-scroll)
+- Chat export as Markdown
+- Date separators
+- Long-press session: rename/delete
+- MEMORY.md editor
 
-### 系统能力
-- Cron 定时任务（WorkManager 调度 + 通知推送 + 管理 UI）
-- Heartbeat 心跳检查
-- Agent 模板（5 种预设子代理角色）
-- Gateway Watchdog（Node.js 崩溃自动重启）
-- Foreground Service（常驻运行）
-- 备份/恢复（配置 + 记忆 + 会话 + Skills）
-- 配置保护（升级/恢复不丢失 API Key）
-- WebViewBridge 浏览器控制（端口 18790）
+### System
+- Cron tasks (WorkManager + notifications + UI)
+- Heartbeat health checks
+- Agent templates (5 preset sub-agent roles)
+- Gateway Watchdog (auto-restart)
+- Foreground Service (persistent)
+- Backup/restore (config + memory + sessions + skills)
+- Config protection (API keys survive upgrade/restore)
+- WebViewBridge browser control (port 18790)
+- Doctor/Selftest API
 
-### 修复
-- news_summary 改用 RSS/Tavily 多源聚合
-- Android 无 Intl API 兼容
-- Gateway 连接超时、配置丢失、UTF-8 编码损坏等
+### Fixes
+- news_summary uses RSS/Tavily multi-source (no browser bridge dependency)
+- Client done event content cleared to empty
+- Android Node.js missing Intl API (use getTimezoneOffset)
+- Gateway connection timeout (socket.setTimeout + keepAliveTimeout)
+- Config loss (extractEngine overwrites openclaw.json)
+- UTF-8 encoding corruption (PowerShell replace breaks special chars)
+- Dark mode color gaps (fab_bg/fab_icon etc.)
+- web_fetch User-Agent rejected by server
+- Tool timeout mechanism + max_agent_steps anti-infinite-loop
 
-### 移除
-- 语音输入功能（fabVoice + RECORD_AUDIO 权限）
+### Removed
+- Voice input (fabVoice + RECORD_AUDIO permission)
+
+---
 
 ## [1.0.0] - 2026-04-06
 
-首个发布版本。
+Initial release.
 
-- 基础聊天界面（Fragment + RecyclerView + XML）
-- Node.js Gateway 内嵌运行
-- 多会话管理（创建/切换/重命名）
-- 多供应商 LLM 配置（百炼/OpenAI/Anthropic/DeepSeek）
-- Markdown 渲染 + 代码高亮
-- 图片/文件分析
-- Workspace 文件编辑器
-- Skills 安装管理
-- 备份/恢复
-- 双语 UI（中/英）
+### Features
+- Basic chat UI (Fragment + RecyclerView + XML)
+- Embedded Node.js Gateway
+- Multi-session management (create/switch/rename)
+- Settings page (model provider config, memory mode, backup/restore, language)
+- File analysis (image recognition)
+- Multi-language support (Chinese/English)
+- Network status monitoring

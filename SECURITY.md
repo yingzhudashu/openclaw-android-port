@@ -1,52 +1,35 @@
-# Security Policy
+﻿# Security Policy
 
 ## Supported Versions
 
-| Version | Supported          |
-|---------|--------------------|
-| 1.2.x   | ✅ Current          |
-| 1.1.x   | ⚠️ Security fixes only |
-| 1.0.x   | ❌ End of life       |
+| Version | Security Updates |
+|---------|-----------------|
+| 1.3.x   | Yes             |
+| < 1.3   | No              |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly:
-
-1. **DO NOT** open a public GitHub issue
-2. Email: [yingzhudashu@gmail.com](mailto:yingzhudashu@gmail.com)
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
-
-We aim to respond within 48 hours and provide a fix within 7 days for critical issues.
+1. Do NOT describe the vulnerability in a public issue
+2. Open a report via [GitHub Issues](https://github.com/yingzhudashu/openclaw-android-port/issues) with title prefixed by [Security]
+3. Include: affected component, steps to reproduce, potential impact, suggested fix
+4. We commit to initial response within 72 hours.
 
 ## Security Design
 
-### API Key Storage
-- API keys are stored **only on the device** in the app's private storage
-- Keys are never transmitted to any server other than the configured LLM provider
-- The repository contains **no hardcoded credentials** — all `api_key` fields in `openclaw.json` are empty strings
+### API Key Protection
+- Stored in app-private directory (Context.MODE_PRIVATE)
+- No hardcoded credentials in code or repository
+- .gitignore excludes configuration files
 
-### Network Communication
-- All LLM API calls use HTTPS
-- The Gateway binds to `127.0.0.1:18789` (localhost only) — not accessible from external networks
-- WebViewBridge binds to `127.0.0.1:18790` (localhost only)
+### Network Security
+- Gateway binds only to 127.0.0.1 (loopback)
+- Device Control API (18791) and WebViewBridge (18790) also loopback-only
+- LLM communication uses HTTPS
 
-### Data Privacy
-- No telemetry or analytics
-- No data collection or transmission beyond user-initiated LLM API calls
-- All conversation data stored locally on device
-- Backup files are stored in the app's private directory
+### Permission Minimization
+- Only necessary runtime permissions requested
+- Users can view/manage permissions in Settings
 
-### Code Execution
-- The `exec` tool runs commands in the app's sandboxed environment
-- Destructive commands (`rm -rf /`, `mkfs`, etc.) are blocked
-- Background processes have automatic timeout protection (default 300s)
-
-## Automated Security Checks
-
-The repository includes:
-- `.gitignore` rules to prevent accidental commit of API keys and build artifacts
-- Empty API key fields in the shipped `openclaw.json` template
+### Known Limitations
+- APK can be decompiled; API Keys extractable on rooted devices
+- Debug APK contains unobfuscated code; Release should use ProGuard/R8

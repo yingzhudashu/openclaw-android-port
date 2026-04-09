@@ -15,7 +15,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
    - **Environment**: Android version, device model, app version
    - **Steps to reproduce**
    - **Expected vs actual behavior**
-   - **Logs**: `db logcat | grep -E "NodeRunner|Gateway|ChatFragment"`
+   - **Logs**: ``adb logcat | grep -E "NodeRunner|Gateway|ChatFragment"`
    - Screenshots/screen recordings (recommended)
 
 ### Suggesting Features
@@ -28,7 +28,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 #### Development Setup
 
-```ash
+````bash
 git clone https://github.com/yingzhudashu/openclaw-android-port.git
 cd openclaw-android-port/poc-app
 
@@ -52,7 +52,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 <type>(<scope>): <description>
 ```
 
-Types: `eat`, `ix`, `docs`, `style`, `efactor`, `perf`, `	est`, `ci`, `chore`
+Types: ``feat`, ``fix`, `docs`, `style`, ``refactor`, `perf`, `	est`, `ci`, `chore`
 
 #### PR Checklist
 
@@ -65,8 +65,8 @@ Types: `eat`, `ix`, `docs`, `style`, `efactor`, `perf`, `	est`, `ci`, `chore`
 ### Branch Strategy
 
 - `main` — stable branch, all releases based on this
-- `eature/*` — feature branches, merged to `main`
-- `ix/*` — fix branches, merged to `main` (hotfix)
+- ``feature/*` — feature branches, merged to `main`
+- ``fix/*` — fix branches, merged to `main` (hotfix)
 
 ## Testing
 
@@ -91,7 +91,7 @@ Recommended scenarios on real Android device:
 ## Release Process
 
 1. Update `CHANGELOG.md`
-2. Bump `ersionCode` and `ersionName` in `pp/build.gradle.kts`
+2. Bump ``versionCode` and ``versionName` in ``app/build.gradle.kts`
 3. Create Git tag: `git tag v1.x.x`
 4. Push and create GitHub Release
 

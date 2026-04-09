@@ -46,7 +46,10 @@ data class ChatMessage(
     val toolLog: String? = null,
     val steps: Int = 0,
     val sessionId: String? = null,
-    val sendFailed: Boolean = false
+    val sendFailed: Boolean = false,
+    // Fix #7/#8: Snapshot of pending state for retry restoration
+    val retryFileContent: String? = null,
+    val retryOriginalImageBase64: String? = null
 )
 
 /**

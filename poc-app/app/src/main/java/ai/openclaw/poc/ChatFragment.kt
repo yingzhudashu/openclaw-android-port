@@ -79,8 +79,13 @@ class ChatFragment : Fragment() {
     private var healthFailCount = 0
     private var isEngineHealthy = true
 
+    // Fix #5: Use a flag to prevent rescheduling after view is destroyed
+    @Volatile
+    private var healthCheckRunning = false
+
     private val healthCheckRunnable = object : Runnable {
         override fun run() {
+            if (!healthCheckRunning) return
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val resp = withContext(Dispatchers.IO) { httpGet("$BASE_URL/health") }
@@ -96,7 +101,10 @@ class ChatFragment : Fragment() {
                     }
                 }
             }
-            healthCheckHandler.postDelayed(this, 30000)
+            // Only reschedule if still running
+            if (healthCheckRunning) {
+                healthCheckHandler.postDelayed(this, 30000)
+            }
         }
     }
 
@@ -192,11 +200,20 @@ class ChatFragment : Fragment() {
                     messageAdapter.removeMessageAt(position)
                 }
             }
+            // Fix #7/#8: Restore pending file/image from snapshot saved in ChatMessage, then auto-send
+            if (message.retryFileContent != null) {
+                pendingFileName = message.fileName
+                pendingFileContent = message.retryFileContent
+            }
+            if (message.retryOriginalImageBase64 != null) {
+                pendingOriginalImageBase64 = message.retryOriginalImageBase64
+            }
             etMessage.setText(message.content)
             sendMessage()
         }
 
         // Start gateway health check
+        healthCheckRunning = true  // Fix #5: Enable health check
         healthCheckHandler.postDelayed(healthCheckRunnable, 10000)
 
         fetchToolCount()
@@ -220,7 +237,11 @@ class ChatFragment : Fragment() {
             // Await model+provider info before creating first session
             viewLifecycleOwner.lifecycleScope.launch {
                 fetchModelInfoSync()
-                createNewSession()
+                val success = createNewSession()
+                if (success) {
+                    val welcomeMsg = getString(R.string.chat_welcome)
+                    messageAdapter.addMessage(ChatMessage(content = welcomeMsg, isUser = false, model = "", sessionId = sessionId))
+                }
             }
         }
     }
@@ -231,6 +252,8 @@ class ChatFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Fix #9: Disable health check to prevent rescheduling
+        healthCheckRunning = false
         networkCallback?.let {
             val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             cm.unregisterNetworkCallback(it)
@@ -253,62 +276,62 @@ class ChatFragment : Fragment() {
 
     // ─── Session Management ──────────────────────────────────────────────────
 
-    private fun createNewSession(agentName: String? = null, systemPrompt: String? = null) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            // 引擎可能还没启动，最多重试 3 次（间隔 2s）
-            var retries = 3
-            while (retries > 0) {
+    // Fix #1: Return Boolean to signal success/failure
+    private suspend fun createNewSession(agentName: String? = null, systemPrompt: String? = null): Boolean {
+        // 引擎可能还没启动，最多重试 3 次（间隔 2s）
+        var retries = 3
+        while (retries > 0) {
+            try {
+                val data = withContext(Dispatchers.IO) {
+                    val url = URL("$BASE_URL/api/sessions")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    conn.connectTimeout = 5000; conn.readTimeout = 5000; conn.doOutput = true
+                    val body = JSONObject().apply {
+                        put("title", agentName ?: getString(R.string.chat_new_session))
+                        if (currentModel.isNotEmpty()) put("model", currentModel)
+                        if (currentProvider.isNotEmpty()) put("provider", currentProvider)
+                        if (!systemPrompt.isNullOrEmpty()) put("system_prompt", systemPrompt)
+                    }
+                    OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
+                    val code = conn.responseCode
+                    val resp = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
+                    conn.disconnect()
+                    if (code !in 200..299) throw Exception("HTTP $code")
+                    JSONObject(resp)
+                }
+                sessionId = data.getJSONObject("session").getString("id")
+                currentSessionTitle = data.getJSONObject("session").optString("title", getString(R.string.chat_new_session))
+                updateTopBar()
+                // Save welcome message to gateway so it persists across session switches
                 try {
-                    val data = withContext(Dispatchers.IO) {
-                        val url = URL("$BASE_URL/api/sessions")
-                        val conn = url.openConnection() as HttpURLConnection
+                    withContext(Dispatchers.IO) {
+                        val welcomeBody = JSONObject().apply {
+                            put("role", "assistant")
+                            put("content", getString(R.string.chat_welcome))
+                        }
+                        val conn = URL("$BASE_URL/api/sessions/$sessionId/messages").openConnection() as HttpURLConnection
                         conn.requestMethod = "POST"
-                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                        conn.connectTimeout = 5000; conn.readTimeout = 5000; conn.doOutput = true
-                        val body = JSONObject().apply {
-                            put("title", agentName ?: getString(R.string.chat_new_session))
-                            if (currentModel.isNotEmpty()) put("model", currentModel)
-                            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
-                            if (!systemPrompt.isNullOrEmpty()) put("system_prompt", systemPrompt)
-                        }
-                        OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
-                        val code = conn.responseCode
-                        val resp = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.doOutput = true
+                        conn.outputStream.write(welcomeBody.toString().toByteArray())
+                        conn.responseCode
                         conn.disconnect()
-                        if (code !in 200..299) throw Exception("HTTP $code")
-                        JSONObject(resp)
                     }
-                    sessionId = data.getJSONObject("session").getString("id")
-                    currentSessionTitle = data.getJSONObject("session").optString("title", getString(R.string.chat_new_session))
-                    updateTopBar()
-                    // Save welcome message to gateway so it persists across session switches
-                    try {
-                        withContext(Dispatchers.IO) {
-                            val welcomeBody = JSONObject().apply {
-                                put("role", "assistant")
-                                put("content", getString(R.string.chat_welcome))
-                            }
-                            val conn = URL("$BASE_URL/api/sessions/$sessionId/messages").openConnection() as HttpURLConnection
-                            conn.requestMethod = "POST"
-                            conn.setRequestProperty("Content-Type", "application/json")
-                            conn.doOutput = true
-                            conn.outputStream.write(welcomeBody.toString().toByteArray())
-                            conn.responseCode
-                            conn.disconnect()
-                        }
-                    } catch (_: Exception) {}
-                    return@launch  // 成功，退出
-                } catch (_: Exception) {
-                    retries--
-                    if (retries > 0) {
-                        delay(2000)  // 等引擎启动
-                    }
+                } catch (_: Exception) {}
+                return true  // 成功
+            } catch (_: Exception) {
+                retries--
+                if (retries > 0) {
+                    delay(2000)  // 等引擎启动
                 }
             }
-            // 全部失败
-            sessionId = ""
-            updateTopBar()
         }
+        // 全部失败
+        sessionId = ""
+        updateTopBar()
+        return false
     }
 
     // Agent templates for sub-agent simulation
@@ -391,16 +414,23 @@ class ChatFragment : Fragment() {
                 .putString("draft_$sessionId", draft).apply()
         }
         messageAdapter.clearMessages()
-        val welcomeMsg = if (agentName != null) getString(R.string.agent_welcome, agentName) else getString(R.string.chat_welcome)
-        messageAdapter.addMessage(ChatMessage(content = welcomeMsg, isUser = false, model = "", sessionId = sessionId))
         currentSessionTitle = agentName ?: getString(R.string.chat_new_session)
-        // Refresh default model+provider from gateway before creating session
+        // Fix #1: Create session FIRST, then show welcome message only after success
         viewLifecycleOwner.lifecycleScope.launch {
             fetchModelInfoSync()
-            createNewSession(agentName, systemPrompt)
+            val success = createNewSession(agentName, systemPrompt)
+            if (success) {
+                val welcomeMsg = if (agentName != null) getString(R.string.agent_welcome, agentName) else getString(R.string.chat_welcome)
+                messageAdapter.addMessage(ChatMessage(content = welcomeMsg, isUser = false, model = "", sessionId = sessionId))
+            } else {
+                Toast.makeText(requireContext(), "会话创建失败", Toast.LENGTH_SHORT).show()
+            }
         }
         Snackbar.make(requireView(), getString(R.string.chat_new_session_snack), Snackbar.LENGTH_SHORT).show()
     }
+
+    // Fix #8: Track loading request to prevent stale data overwriting
+    private var loadingSessionId: String? = null
 
     private fun switchToSession(session: Session) {
         // Save current draft before switching
@@ -412,6 +442,8 @@ class ChatFragment : Fragment() {
         // Reset sending state to allow messages in new session
         isSending = false
         fabSend.isEnabled = true
+        // Mark this as the latest loading request
+        loadingSessionId = session.id
         // Switch
         sessionId = session.id
         currentSessionTitle = session.title
@@ -441,7 +473,15 @@ class ChatFragment : Fragment() {
 
         refreshSessionModelProvider()
 
-        messageAdapter.addMessage(ChatMessage(content = text, isUser = true))
+        // Fix #7: Snapshot pending state BEFORE it gets cleared in finally, for retry restoration
+        val snapFileName = pendingFileName
+        val snapFileContent = pendingFileContent
+        val snapImageBase64 = pendingOriginalImageBase64
+        messageAdapter.addMessage(ChatMessage(
+            content = text, isUser = true,
+            retryFileContent = snapFileContent,
+            retryOriginalImageBase64 = snapImageBase64
+        ))
         scrollToBottom()
         etMessage.text.clear()
         requireContext().getSharedPreferences("openclaw_drafts", 0).edit()
@@ -509,8 +549,14 @@ class ChatFragment : Fragment() {
                     scrollToBottom()
                 }
             } finally {
+                // Fix #2: Always reset sending state AND clear pending files on error
                 isSending = false
                 fabSend.isEnabled = true
+                if (sessionId == requestSessionId) {
+                    pendingFileName = null
+                    pendingFileContent = null
+                    pendingOriginalImageBase64 = null
+                }
             }
         }
     }
@@ -612,11 +658,17 @@ class ChatFragment : Fragment() {
         dialog.show()
     }
 
+    // Fix #4 + #8: Show loading indicator + prevent stale data from overwriting newer session
     private fun loadSessionHistory(sid: String) {
+        // Show loading state immediately
+        messageAdapter.clearMessages()
+        messageAdapter.addMessage(ChatMessage(content = getString(R.string.chat_loading_history), isUser = false, model = "", sessionId = sid))
+
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val data = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/sessions/$sid") }
-                if (sessionId != sid) return@launch
+                // Fix #8: Only apply if this is still the latest loading request
+                if (loadingSessionId != sid || sessionId != sid) return@launch
                 val sessionObj = data.getJSONObject("session")
                 currentSessionTitle = sessionObj.optString("title", currentSessionTitle)
                 updateTopBar()
@@ -635,12 +687,12 @@ class ChatFragment : Fragment() {
                         ))
                     }
                 }
-                if (sessionId != sid) return@launch
+                if (loadingSessionId != sid || sessionId != sid) return@launch
                 messageAdapter.clearMessages()
                 messages.forEach { messageAdapter.addMessage(it) }
                 scrollToBottom()
             } catch (_: Exception) {
-                if (sessionId == sid) {
+                if (loadingSessionId == sid && sessionId == sid) {
                     view?.let { Snackbar.make(it, getString(R.string.chat_load_history_failed), Snackbar.LENGTH_SHORT).show() }
                 }
             }
@@ -697,21 +749,30 @@ class ChatFragment : Fragment() {
             .show()
     }
 
+    // Fix #6: Export the TARGET session's messages from API, not the adapter (which may be a different session)
     private fun exportSession(session: Session) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                // Fetch messages from API for the target session
+                val data = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/sessions/${session.id}") }
+                val arr = data.getJSONObject("session").getJSONArray("messages")
                 val sb = StringBuilder()
                 sb.appendLine("# ${session.title}")
                 sb.appendLine("*Exported on ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(java.util.Date())}*")
                 sb.appendLine()
-                for (msg in messageAdapter.getAllMessages()) {
-                    if (msg.isUser) {
-                        sb.appendLine("## 👤 User")
-                    } else {
-                        sb.appendLine("## 🤖 AI")
+                for (i in 0 until arr.length()) {
+                    val msg = arr.getJSONObject(i)
+                    val content = msg.optString("content", "")
+                    val role = msg.optString("role", "assistant")
+                    if (content.isNotEmpty()) {
+                        if (role == "user") {
+                            sb.appendLine("## 👤 User")
+                        } else {
+                            sb.appendLine("## 🤖 AI")
+                        }
+                        sb.appendLine(content)
+                        sb.appendLine()
                     }
-                    sb.appendLine(msg.content)
-                    sb.appendLine()
                 }
                 val fileName = "${session.title.replace(Regex("[^\\w\\u4e00-\\u9fff]"), "_")}.md"
                 val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
@@ -838,7 +899,8 @@ class ChatFragment : Fragment() {
                         content = getString(R.string.chat_image_label),
                         isUser = true,
                         imageBase64 = thumbBase64,
-                        originalImageBase64 = originalBase64
+                        originalImageBase64 = originalBase64,
+                        retryOriginalImageBase64 = originalBase64
                     ))
                     scrollToBottom()
 
@@ -928,8 +990,10 @@ class ChatFragment : Fragment() {
                     messageAdapter.updateLastAiMessage(getString(R.string.chat_analyze_failed, e.message ?: ""))
                 }
             } finally {
+                // Fix #6: Always reset sending state AND clear pending image
                 isSending = false
                 fabSend.isEnabled = true
+                pendingOriginalImageBase64 = null
             }
         }
     }
@@ -1196,9 +1260,16 @@ class ChatFragment : Fragment() {
         return JSONObject(resp)
     }
 
+    // Fix #3: Only scroll if user is already near bottom (don't interrupt reading history)
     private fun scrollToBottom() {
         val count = messageAdapter.getMessageCount()
-        if (count > 0) rvMessages.smoothScrollToPosition(count - 1)
+        if (count <= 0) return
+        val layoutManager = rvMessages.layoutManager as LinearLayoutManager
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+        val isNearBottom = (count - 1 - lastVisible) <= 3
+        if (isNearBottom) {
+            rvMessages.scrollToPosition(count - 1)
+        }
     }
 
     private fun httpGet(urlStr: String): JSONObject {

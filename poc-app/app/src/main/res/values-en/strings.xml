@@ -97,6 +97,7 @@
     <string name="settings_group_personal">Personalization</string>
     <string name="settings_group_skills">Skills</string>
     <string name="settings_group_system">System</string>
+    <string name="settings_permissions">Permissions</string>
     <string name="settings_soul">SOUL Persona</string>
     <string name="settings_user">User Profile</string>
     <string name="settings_heartbeat">Heartbeat Tasks</string>

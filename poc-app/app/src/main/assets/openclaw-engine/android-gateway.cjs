@@ -26,7 +26,7 @@ const { URL } = require('url');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const VERSION = '1.2.0-android';
+const VERSION = '1.3.0-android';
 const START_TIME = Date.now();
 const MAX_BODY_SIZE = 20 * 1024 * 1024; // 20 MB request body limit (images can be large)
 const MAX_SESSIONS = 100;
@@ -128,6 +128,29 @@ function memoryUsageMB() {
     heapTotal: +(m.heapTotal / 1048576).toFixed(1),
     external: +(m.external / 1048576).toFixed(1),
   };
+}
+
+// ─── Cron Task Persistence (v1.3.0) ──────────────────────────────────────
+
+const CRON_TASKS_PATH = path.join(BASE_DIR, 'cron_tasks.json');
+
+function loadCronTasks() {
+  try {
+    const raw = fs.readFileSync(CRON_TASKS_PATH, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveCronTasks(tasks) {
+  try {
+    ensureDir(path.dirname(CRON_TASKS_PATH));
+    fs.writeFileSync(CRON_TASKS_PATH, JSON.stringify(tasks, null, 2), 'utf-8');
+  } catch (e) {
+    logger.error('Cron', 'Failed to save cron tasks: ' + e.message);
+  }
 }
 
 // ─── Config Manager ──────────────────────────────────────────────────────────
@@ -332,6 +355,26 @@ function estimateTokens(text) {
   return Math.ceil(text.length / 3);
 }
 
+// Estimate tokens for a single message (handles multimodal content)
+function estimateMessageTokens(m) {
+  if (!m.content) return 0;
+  if (typeof m.content === 'string') return estimateTokens(m.content);
+  if (Array.isArray(m.content)) {
+    // Multimodal: sum text tokens + fixed image token cost
+    let total = 0;
+    for (const part of m.content) {
+      if (part.type === 'text') {
+        total += estimateTokens(part.text || '');
+      } else if (part.type === 'image_url') {
+        // Vision API image cost: ~800 tokens per image (GPT-4V / Qwen-VL standard)
+        total += 800;
+      }
+    }
+    return total;
+  }
+  return estimateTokens(JSON.stringify(m.content));
+}
+
 // Truncate message history to fit within context window
 function truncateMessages(messages, maxTokens) {
   if (!messages || messages.length === 0) return messages;
@@ -339,18 +382,33 @@ function truncateMessages(messages, maxTokens) {
   // Always keep system message
   const systemMsgs = messages.filter(m => m.role === 'system');
   const nonSystemMsgs = messages.filter(m => m.role !== 'system');
-  for (const m of systemMsgs) totalTokens += estimateTokens(typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
+  for (const m of systemMsgs) totalTokens += estimateMessageTokens(m);
+
   // Add messages from newest to oldest
   const kept = [];
   for (let i = nonSystemMsgs.length - 1; i >= 0; i--) {
     const m = nonSystemMsgs[i];
-    const tokens = estimateTokens(typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
-    if (totalTokens + tokens > maxTokens) break;
+    const tokens = estimateMessageTokens(m);
+    if (totalTokens + tokens > maxTokens) {
+      // Always keep the newest user message (critical for current turn)
+      if (i === nonSystemMsgs.length - 1 && m.role === 'user') {
+        kept.unshift(m);
+        totalTokens += tokens;
+        logger.info('Context', `Kept newest user message (${tokens} tokens) despite exceeding ${maxTokens} limit`);
+      }
+      // Drop older messages to make room
+      break;
+    }
     totalTokens += tokens;
     kept.unshift(m);
   }
   if (kept.length < nonSystemMsgs.length) {
-    logger.info('Context', `Truncated ${nonSystemMsgs.length - kept.length} messages to fit ${maxTokens} token limit`);
+    const dropped = nonSystemMsgs.length - kept.length;
+    const droppedImages = nonSystemMsgs.filter((m, idx) => {
+      const isKept = kept.includes(m);
+      return !isKept && Array.isArray(m.content) && m.content.some(p => p.type === 'image_url');
+    }).length;
+    logger.info('Context', `Truncated ${dropped} messages (${droppedImages} with images) to fit ${maxTokens} token limit`);
   }
   return [...systemMsgs, ...kept];
 }
@@ -1269,6 +1327,72 @@ route('DELETE', '/api/sessions/:id', (req, res, params) => {
   if (!getSession(params.id)) return sendError(res, 404, 'not_found', 'Session not found');
   deleteSession(params.id);
   sendJSON(res, 200, { deleted: true, id: params.id });
+});
+
+// --- Cron API (v1.3.0 Agent-controllable) ---
+route('GET', '/api/cron/list', (req, res) => {
+  const tasks = loadCronTasks();
+  sendJSON(res, 200, { tasks: tasks.map(t => ({
+    id: t.id, name: t.name, prompt: t.prompt, interval_minutes: t.interval_minutes,
+    enabled: t.enabled, notify: t.notify, last_run: t.last_run, last_result: t.last_result,
+  }))});
+});
+
+route('POST', '/api/cron/add', async (req, res) => {
+  let body;
+  try { body = await parseBody(req); } catch (e) { return sendError(res, 400, 'bad_request', e.message); }
+  const name = String(body.name || '').trim();
+  const prompt = String(body.prompt || '').trim();
+  const intervalMinutes = parseInt(body.interval_minutes || body.intervalMinutes || 60);
+  const notify = body.notify !== false;
+  if (!name || !prompt) return sendError(res, 400, 'missing_fields', 'name and prompt are required');
+  if (intervalMinutes < 15) return sendError(res, 400, 'invalid_interval', 'interval_minutes must be >= 15');
+  const tasks = loadCronTasks();
+  const id = 'cron_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  const task = { id, name, prompt, interval_minutes: intervalMinutes, enabled: true, notify, last_run: 0, last_result: '' };
+  tasks.push(task);
+  saveCronTasks(tasks);
+  sendJSON(res, 201, { task, message: 'Cron task created. Restart app to activate.' });
+});
+
+route('POST', '/api/cron/remove', async (req, res) => {
+  let body;
+  try { body = await parseBody(req); } catch (e) { return sendError(res, 400, 'bad_request', e.message); }
+  const id = String(body.id || '').trim();
+  if (!id) return sendError(res, 400, 'missing_id', 'id is required');
+  let tasks = loadCronTasks();
+  const before = tasks.length;
+  tasks = tasks.filter(t => t.id !== id);
+  if (tasks.length === before) return sendError(res, 404, 'not_found', 'Cron task not found: ' + id);
+  saveCronTasks(tasks);
+  sendJSON(res, 200, { deleted: true, id });
+});
+
+route('POST', '/api/cron/run', async (req, res) => {
+  let body;
+  try { body = await parseBody(req); } catch (e) { return sendError(res, 400, 'bad_request', e.message); }
+  const id = String(body.id || '').trim();
+  if (!id) return sendError(res, 400, 'missing_id', 'id is required');
+  const tasks = loadCronTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return sendError(res, 404, 'not_found', 'Cron task not found: ' + id);
+  try {
+    const chatBody = JSON.stringify({ message: task.prompt, stream: false });
+    const chatResp = await httpRequest('http://127.0.0.1:18789/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(chatBody) },
+      body: chatBody,
+      timeout: 120000,
+    });
+    const chatData = JSON.parse(chatResp.body);
+    const result = chatData.content || chatData.response || chatData.message || 'No response';
+    task.last_run = Date.now();
+    task.last_result = result.slice(0, 500);
+    saveCronTasks(tasks);
+    sendJSON(res, 200, { executed: true, id, name: task.name, result: result.slice(0, 500) });
+  } catch (e) {
+    sendJSON(res, 500, { error: 'Execution failed: ' + e.message, id });
+  }
 });
 
 // --- Config ---
@@ -2361,6 +2485,7 @@ const TOOL_EXEC_TIMEOUT = 20000; // 20s per tool call
 const TAVILY_API_KEY_BUILTIN = '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';
 function getTavilyKey() { return (config.tavily && config.tavily.api_key) || TAVILY_API_KEY_BUILTIN; }
 const BROWSER_BRIDGE_URL = 'http://127.0.0.1:18790';
+const DEVICE_CTRL_URL = 'http://127.0.0.1:18791'; // New: device control endpoint
 
 // ─── Tool Definitions (OpenAI function calling format) ───────────────────────
 
@@ -2790,6 +2915,147 @@ const TOOL_DEFINITIONS = [
       parameters: {
         type: 'object',
         properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'browser',
+    function: {
+      name: 'browser_snapshot',
+      description: '获取当前浏览器页面的 DOM 快照（可访问性树），用于理解页面结构和元素。',
+      parameters: {
+        type: 'object',
+        properties: {
+          max_elements: { type: 'number', description: '最大返回元素数，默认200' }
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'browser',
+    function: {
+      name: 'browser_tabs',
+      description: '获取浏览器当前标签页状态列表。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'tools',
+    function: {
+      name: 'image_generate',
+      description: '使用通义万相 AI 生成图片。返回图片 URL 或 base64。',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: '图片描述文字（支持中英文）' },
+          size: { type: 'string', description: '图片尺寸: 1024*1024, 720*1280, 1280*720', enum: ['1024*1024', '720*1280', '1280*720'] },
+          model: { type: 'string', description: '模型: wanx2.1-t2i-turbo, wanx2.1-t2i-plus', enum: ['wanx2.1-t2i-turbo', 'wanx2.1-t2i-plus'] },
+        },
+        required: ['prompt'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'device',
+    function: {
+      name: 'camera_snap',
+      description: '用手机摄像头拍照。返回 base64 图片。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'device',
+    function: {
+      name: 'location_get',
+      description: '获取手机当前位置 GPS 信息。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'device',
+    function: {
+      name: 'notifications_list',
+      description: '获取手机最近的通知列表。',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: '返回数量，默认10' }
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'cron_add',
+      description: '创建一个新的定时任务。',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: '任务名称' },
+          prompt: { type: 'string', description: '执行时发送给 AI 的提示词' },
+          interval_minutes: { type: 'number', description: '执行间隔（分钟），最小15' },
+          notify: { type: 'boolean', description: '是否发送通知，默认true' },
+        },
+        required: ['name', 'prompt', 'interval_minutes'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'cron_list',
+      description: '查看所有定时任务。',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'cron_remove',
+      description: '删除一个定时任务。',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '任务 ID' },
+        },
+        required: ['id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    category: 'core',
+    function: {
+      name: 'cron_run',
+      description: '手动执行一个定时任务。',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: '任务 ID' },
+        },
+        required: ['id'],
       },
     },
   },
@@ -3708,6 +3974,183 @@ async function executeToolInner(name, args) {
           tools_count: TOOL_DEFINITIONS.length,
           time: now.toISOString(),
         };
+      }
+
+      // ─── v1.3.0 New Tools ──────────────────────────────────────────────
+
+      case 'browser_snapshot': {
+        try {
+          const maxEls = args.max_elements || 200;
+          const resp = await httpRequest(`${BROWSER_BRIDGE_URL}/browser/snapshot`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ max_elements: maxEls }),
+            timeout: 15000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: `browser_snapshot failed: ${e.message}`, url: 'N/A' };
+        }
+      }
+
+      case 'browser_tabs': {
+        try {
+          const resp = await httpRequest(`${BROWSER_BRIDGE_URL}/browser/tabs`, {
+            timeout: 10000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: `browser_tabs failed: ${e.message}` };
+        }
+      }
+
+      case 'image_generate': {
+        const dashKey = (config.image && config.image.api_key) || '';
+        if (!dashKey) {
+          return { error: 'DashScope API key not configured. Set config.image.api_key' };
+        }
+        const imgModel = args.model || 'wanx2.1-t2i-turbo';
+        const size = args.size || '1024*1024';
+        try {
+          const submitBody = JSON.stringify({
+            model: imgModel,
+            input: { prompt: args.prompt },
+            parameters: { size },
+          });
+          const submitResp = await httpRequest('https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + dashKey,
+              'X-DashScope-Async': 'enable',
+              'Content-Length': Buffer.byteLength(submitBody),
+            },
+            body: submitBody,
+            timeout: 15000,
+          });
+          const submitData = JSON.parse(submitResp.body);
+          if (submitData.code || !submitData.output || !submitData.output.task_id) {
+            return { error: submitData.message || submitData.code || 'Failed to submit task', detail: submitData };
+          }
+          const taskId = submitData.output.task_id;
+          for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            const pollResp = await httpRequest('https://dashscope.aliyuncs.com/api/v1/tasks/' + taskId, {
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + dashKey },
+              timeout: 10000,
+            });
+            const pollData = JSON.parse(pollResp.body);
+            if (pollData.output && pollData.output.task_status === 'SUCCEEDED') {
+              const urls = (pollData.output.results || []).map(r => r.url).filter(Boolean);
+              return { task_id: taskId, status: 'succeeded', images: urls, prompt: args.prompt };
+            }
+            if (pollData.output && pollData.output.task_status === 'FAILED') {
+              return { error: 'Image generation failed', detail: pollData.output };
+            }
+          }
+          return { task_id: taskId, status: 'pending', message: 'Still processing, check later' };
+        } catch (e) {
+          return { error: 'image_generate failed: ' + e.message };
+        }
+      }
+
+      case 'camera_snap': {
+        try {
+          const resp = await httpRequest('http://127.0.0.1:18791/device/camera/snap', {
+            method: 'POST',
+            timeout: 15000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'camera_snap failed: ' + e.message };
+        }
+      }
+
+      case 'location_get': {
+        try {
+          const resp = await httpRequest('http://127.0.0.1:18791/device/location', {
+            timeout: 15000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'location_get failed: ' + e.message };
+        }
+      }
+
+      case 'notifications_list': {
+        try {
+          const limit = args.limit || 10;
+          const resp = await httpRequest('http://127.0.0.1:18791/device/notifications?limit=' + limit, {
+            timeout: 10000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'notifications_list failed: ' + e.message };
+        }
+      }
+
+      case 'cron_add': {
+        try {
+          const interval = args.interval_minutes || 60;
+          if (interval < 15) {
+            return { error: 'interval_minutes must be >= 15 (Android WorkManager minimum)' };
+          }
+          const body = JSON.stringify({
+            name: args.name,
+            prompt: args.prompt,
+            intervalMinutes: interval,
+            notify: args.notify !== false,
+          });
+          const resp = await httpRequest('http://127.0.0.1:18789/api/cron/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            body: body,
+            timeout: 10000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'cron_add failed: ' + e.message };
+        }
+      }
+
+      case 'cron_list': {
+        try {
+          const resp = await httpRequest('http://127.0.0.1:18789/api/cron/list', { timeout: 10000 });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'cron_list failed: ' + e.message };
+        }
+      }
+
+      case 'cron_remove': {
+        try {
+          const body = JSON.stringify({ id: args.id });
+          const resp = await httpRequest('http://127.0.0.1:18789/api/cron/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            body: body,
+            timeout: 10000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'cron_remove failed: ' + e.message };
+        }
+      }
+
+      case 'cron_run': {
+        try {
+          const body = JSON.stringify({ id: args.id });
+          const resp = await httpRequest('http://127.0.0.1:18789/api/cron/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            body: body,
+            timeout: 60000,
+          });
+          return JSON.parse(resp.body);
+        } catch (e) {
+          return { error: 'cron_run failed: ' + e.message };
+        }
       }
 
       default:

@@ -24,10 +24,13 @@ import java.util.concurrent.atomic.AtomicReference
  * - POST /browser/navigate — 打开 URL
  * - POST /browser/eval     — 执行 JavaScript
  * - GET  /browser/content   — 获取页面文本
+ * - GET  /browser/html      — 获取页面 HTML
  * - GET  /browser/screenshot — 获取页面截图 (base64)
  * - POST /browser/click     — 点击元素
  * - POST /browser/type      — 输入文字
  * - GET  /browser/status    — 浏览器状态
+ * - POST /browser/snapshot  — 获取 DOM 可访问性树快照 (v1.3.0)
+ * - GET  /browser/tabs      — 获取标签页状态 (v1.3.0)
  *
  * 零第三方依赖，纯 Java ServerSocket 实现 HTTP 服务。
  * HTTP 服务端口: 18790 (gateway 在 18789)
@@ -394,6 +397,34 @@ class WebViewBridge(private val context: Context) {
                     }
                 }
 
+                uri == "/browser/snapshot" && method == "POST" -> {
+                    requestCount++
+                    recordActivity("snapshot", currentUrl)
+                    val maxElements = jsonBody.optInt("max_elements", 200)
+                    val snapshot = getPageAccessibilitySnapshot(maxElements)
+                    JSONObject().apply {
+                        put("snapshot", snapshot)
+                        put("url", currentUrl)
+                        put("title", pageTitle)
+                        put("elements", snapshot.split("\n").size)
+                    }
+                }
+
+                uri == "/browser/tabs" -> {
+                    JSONObject().apply {
+                        val tabs = JSONArray()
+                        tabs.put(JSONObject().apply {
+                            put("id", "current")
+                            put("url", currentUrl)
+                            put("title", pageTitle)
+                            put("loading", isLoading)
+                            put("active", true)
+                        })
+                        put("tabs", tabs)
+                        put("count", 1)
+                    }
+                }
+
                 else -> {
                     sendResponse(output, 404, JSONObject().put("error", "Not found: $method $uri").toString())
                     socket.close()
@@ -555,5 +586,127 @@ class WebViewBridge(private val context: Context) {
                 JSONArray("[$raw]").getString(0)
             } else raw
         } catch (_: Exception) { raw }
+    }
+
+    /**
+     * Get accessibility-style DOM snapshot for LLM consumption (v1.3.0)
+     * Extracts interactive elements with roles, text, and structure.
+     */
+    fun getPageAccessibilitySnapshot(maxElements: Int = 200): String {
+        val js = """(function(){
+            var els = document.querySelectorAll('a, button, input, select, textarea, [role], h1, h2, h3, h4, h5, h6, p, li, td, th, span, div');
+            var result = [];
+            var count = 0;
+            for (var i = 0; i < els.length && count < $maxElements; i++) {
+                var el = els[i];
+                if (!el.offsetParent && el.tagName !== 'META' && el.tagName !== 'LINK') continue;
+                var tag = el.tagName.toLowerCase();
+                var role = el.getAttribute('role') || tag;
+                var text = (el.textContent || '').trim().substring(0, 100);
+                var name = el.getAttribute('aria-label') || el.getAttribute('name') || '';
+                var id = el.id ? '#' + el.id : '';
+                var cls = el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0,2).join('.') : '';
+                var href = el.href || '';
+                var type = el.type || '';
+                var val = el.value || '';
+                var line = '[' + (count+1) + '] ' + role;
+                if (id || cls) line += ' ' + id + cls;
+                if (name) line += ' name="' + name + '"';
+                if (type) line += ' type="' + type + '"';
+                if (href) line += ' href="' + href.substring(0, 80) + '"';
+                if (val && tag !== 'a' && tag !== 'button') line += ' value="' + val.substring(0, 50) + '"';
+                if (text) line += ': ' + text;
+                result.push(line);
+                count++;
+            }
+            return result.join('\n');
+        })()"""
+        val raw = evaluateJs(js)
+        return unquoteJs(raw)
+    }
+
+    /**
+     * Run internal diagnostic: test all HTTP endpoints from within the app.
+     */
+    fun runDiagnostic(): String {
+        val results = mutableListOf<String>()
+        results.add("=== v1.3.0 Diagnostic ===")
+
+        val gatewayEndpoints = listOf(
+            "http://127.0.0.1:18789/health" to "Gateway Health",
+            "http://127.0.0.1:18789/api/cron/list" to "Cron List",
+            "http://127.0.0.1:18789/api/models" to "Models",
+        )
+        for ((url, label) in gatewayEndpoints) {
+            try {
+                val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val code = conn.responseCode
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+                results.add("OK $label: HTTP $code (${body.take(80)})")
+            } catch (e: Exception) {
+                results.add("FAIL $label: ${e::class.java.simpleName} - ${e.message}")
+            }
+        }
+
+        val bridgeEndpoints = listOf(
+            "http://127.0.0.1:18790/browser/url" to "Browser URL",
+            "http://127.0.0.1:18790/browser/tabs" to "Browser Tabs",
+        )
+        for ((url, label) in bridgeEndpoints) {
+            try {
+                val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val code = conn.responseCode
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+                results.add("OK $label: HTTP $code (${body.take(80)})")
+            } catch (e: Exception) {
+                results.add("FAIL $label: ${e::class.java.simpleName} - ${e.message}")
+            }
+        }
+
+        val deviceEndpoints = listOf(
+            "http://127.0.0.1:18791/device/location" to "Device Location",
+            "http://127.0.0.1:18791/device/notifications?limit=5" to "Device Notifications",
+        )
+        for ((url, label) in deviceEndpoints) {
+            try {
+                val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val code = conn.responseCode
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+                results.add("OK $label: HTTP $code (${body.take(80)})")
+            } catch (e: Exception) {
+                results.add("FAIL $label: ${e::class.java.simpleName} - ${e.message}")
+            }
+        }
+
+        // Test Cron Add
+        try {
+            val url = java.net.URL("http://127.0.0.1:18789/api/cron/add")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            val bodyStr = """{"name":"diag_test","prompt":"test","interval_minutes":15}"""
+            conn.outputStream.use { it.write(bodyStr.toByteArray(Charsets.UTF_8)) }
+            val code = conn.responseCode
+            val resp = conn.inputStream.bufferedReader().use { it.readText() }
+            conn.disconnect()
+            results.add("OK Cron Add: HTTP $code (${resp.take(80)})")
+        } catch (e: Exception) {
+            results.add("FAIL Cron Add: ${e.message}")
+        }
+
+        results.add("=== End Diagnostic ===")
+        return results.joinToString("\n")
     }
 }

@@ -2,7 +2,9 @@ package ai.openclaw.poc
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
@@ -27,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLayout: TabLayout
     private lateinit var nodeRunner: NodeRunner
     private lateinit var webViewBridge: WebViewBridge
+    private lateinit var deviceControlApi: DeviceControlApi
 
     // 日志和状态回调（供 Fragment 注册）
     private var logCallback: ((String) -> Unit)? = null
@@ -68,6 +71,10 @@ class MainActivity : AppCompatActivity() {
         webViewBridge.init()
         webViewBridge.startServer()
 
+        // 初始化设备控制 API (v1.3.0)
+        deviceControlApi = DeviceControlApi(applicationContext)
+        deviceControlApi.start()
+
         // 注册 NodeRunner 回调
         nodeRunner.onLog = { message ->
             runOnUiThread {
@@ -101,6 +108,64 @@ class MainActivity : AppCompatActivity() {
 
         // Handle shortcut intents
         handleShortcutIntent(intent)
+
+        // Request runtime permissions (location, camera, etc.)
+        requestPermissions()
+    }
+
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 100
+    }
+
+    /**
+     * Request runtime permissions on first launch.
+     * Android will show system permission dialogs; users can also manage via Settings.
+     */
+    private fun requestPermissions() {
+        // Check which permissions are still needed
+        val permissionsToRequest = mutableListOf<String>()
+
+        // Location
+        if (!PermissionManager.hasLocation(this)) {
+            permissionsToRequest.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            permissionsToRequest.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        // Camera
+        if (!PermissionManager.hasCamera(this)) {
+            permissionsToRequest.add(android.Manifest.permission.CAMERA)
+        }
+        // Notifications (Android 13+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (!PermissionManager.hasNotification(this)) {
+                permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                permissionsToRequest.toTypedArray(),
+                PERMISSION_REQUEST_CODE
+            )
+            Log.d("MainActivity", "Requested ${permissionsToRequest.size} permissions")
+        } else {
+            Log.d("MainActivity", "All permissions already granted")
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            val granted = grantResults.count { it == android.content.pm.PackageManager.PERMISSION_GRANTED }
+            val total = grantResults.size
+            Log.d("MainActivity", "Permission result: $granted/$total granted")
+            // Permissions status is reflected in Settings page dynamically
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -175,6 +240,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         webViewBridge.stop()
+        deviceControlApi.stop()
         nodeRunner.stop()
     }
 }

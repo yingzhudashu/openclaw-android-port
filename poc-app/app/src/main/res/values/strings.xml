@@ -36,6 +36,7 @@
     <string name="chat_edit_title">编辑会话标题</string>
     <string name="chat_load_sessions_failed">获取会话列表失败</string>
     <string name="chat_load_history_failed">加载历史失败</string>
+    <string name="chat_loading_history">⏳ 加载历史消息中…</string>
     <string name="chat_file_prefix">已附加文件内容:\n\n文件名: %1$s\n\n%2$s\n\n</string>
     <string name="chat_send_image">🖼️ 发送图片中…</string>
     <string name="chat_untitled">未命名</string>
@@ -97,6 +98,9 @@
     <string name="settings_group_personal">个性化</string>
     <string name="settings_group_skills">Skills</string>
     <string name="settings_group_system">系统</string>
+    <string name="settings_permissions">权限管理</string>
+    <string name="settings_permission_granted">✅ 已授权</string>
+    <string name="settings_permission_denied">❌ 未授权</string>
     <string name="settings_soul">SOUL 人设</string>
     <string name="settings_user">用户信息</string>
     <string name="settings_heartbeat">心跳任务</string>

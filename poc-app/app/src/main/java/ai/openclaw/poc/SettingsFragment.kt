@@ -47,6 +47,7 @@ class SettingsFragment : Fragment() {
     private lateinit var tvMaxStepsSummary: TextView
     private lateinit var tvEmbeddingSummary: TextView
     private lateinit var tvMemoryModeSummary: TextView
+    private lateinit var tvPermissionSummary: TextView
 
     private var cachedMaxSteps = 25
     private var cachedEmbeddingModel = ""
@@ -121,6 +122,7 @@ class SettingsFragment : Fragment() {
         }
         view.findViewById<View>(R.id.cellLanguage).setOnClickListener { showLanguagePicker() }
         view.findViewById<View>(R.id.cellMaxSteps).setOnClickListener { showMaxStepsEditor() }
+        view.findViewById<View>(R.id.cellPermissions).setOnClickListener { showPermissionManager() }
 
         // Heartbeat toggle
         val switchHeartbeat = view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchHeartbeat)
@@ -133,6 +135,7 @@ class SettingsFragment : Fragment() {
         tvMaxStepsSummary = view.findViewById(R.id.tvMaxStepsSummary)
         tvEmbeddingSummary = view.findViewById(R.id.tvEmbeddingSummary)
         tvMemoryModeSummary = view.findViewById(R.id.tvMemoryModeSummary)
+        tvPermissionSummary = view.findViewById(R.id.tvPermissionSummary)
 
         try {
             val info = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
@@ -151,7 +154,64 @@ class SettingsFragment : Fragment() {
             retryLoad { loadConfig() }
             retryLoad { loadAllFiles() }
             retryLoad { loadSkills() }
+            updatePermissionSummary()
         }
+    }
+
+    private fun updatePermissionSummary() {
+        tvPermissionSummary.text = PermissionManager.getSummary(requireContext())
+    }
+
+    private fun showPermissionManager() {
+        val status = PermissionManager.getAllPermissionStatus(requireContext())
+        val items = status.map { s ->
+            "${if (s.granted) "✅" else "❌"} ${s.name}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("🔒 权限管理")
+            .setItems(items) { _, which ->
+                val s = status[which]
+                if (s.granted) {
+                    // Already granted - offer to go to settings
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(s.name)
+                        .setMessage("${s.name} 已授权。\n如需修改，请前往系统设置。")
+                        .setPositiveButton("去系统设置") { _, _ ->
+                            PermissionManager.openAppSettings(requireContext())
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                } else {
+                    // Not granted - request permission
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(s.name)
+                        .setMessage("${s.rationale}\n\n即将请求权限，请在系统弹窗中允许。")
+                        .setPositiveButton("去授权") { _, _ ->
+                            val type = when (which) {
+                                0 -> "location"
+                                1 -> "camera"
+                                2 -> "audio"
+                                3 -> "notification"
+                                4 -> "storage"
+                                else -> ""
+                            }
+                            if (type.isNotEmpty()) {
+                                PermissionManager.requestPermission(requireActivity(), type)
+                            }
+                        }
+                        .setNeutralButton("系统设置") { _, _ ->
+                            PermissionManager.openAppSettings(requireContext())
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                }
+            }
+            .setNeutralButton("打开系统设置") { _, _ ->
+                PermissionManager.openAppSettings(requireContext())
+            }
+            .setNegativeButton("关闭", null)
+            .show()
     }
 
     private suspend fun retryLoad(block: suspend () -> Unit) {

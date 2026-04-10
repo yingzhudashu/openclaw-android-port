@@ -26,8 +26,8 @@ native-libs/
 node_modules/
 
 # Runtime data
-android-data/
 data/
+android-data/
 
 # poc-app runtime
 poc-app/app/src/main/assets/openclaw-engine/openclaw.json

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OpenClaw</string>
 
@@ -346,4 +346,13 @@
     <string name="agent_welcome">🤖 %s 已就绪，有什么可以帮你？</string>
     <string name="model_pick_title">切换模型</string>
     <string name="model_switched">已切换到 %s</string>
+    <string name="content_desc_memory_search">Search Memory</string>
+
+    <!-- TTS 朗读 -->
+    <string name="tts_started">开始朗读</string>
+    <string name="tts_stopped">已停止朗读</string>
+    <string name="tts_failed">朗读失败</string>
+    <string name="tts_not_ready">TTS 引擎未就绪，请稍候</string>
+    <string name="tts_volume_off">媒体音量为 0，请调大音量后重试</string>
+    <string name="tts_no_text">无可朗读的内容</string>
 </resources>

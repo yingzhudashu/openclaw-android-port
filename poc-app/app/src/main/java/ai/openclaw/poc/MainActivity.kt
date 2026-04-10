@@ -95,10 +95,15 @@ class MainActivity : AppCompatActivity() {
         val adapter = ViewPagerAdapter(this)
         viewPager.adapter = adapter
 
+        // 确保默认显示对话页
+        viewPager.currentItem = 0
+
         // 关联 TabLayout 和 ViewPager2
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = tabTitles[position]
         }.attach()
+
+        android.util.Log.d("MainActivity", "ViewPager currentItem=${viewPager.currentItem}")
 
         // 预加载所有页面，避免切换时重建
         viewPager.offscreenPageLimit = 2

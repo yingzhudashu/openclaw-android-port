@@ -1,6 +1,5 @@
 package ai.openclaw.poc
 
-import android.app.Dialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -14,7 +13,6 @@ import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -22,6 +20,8 @@ import android.widget.Toast
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.speech.tts.TextToSpeech
+import java.util.Locale as JavaLocale
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
@@ -63,6 +63,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val expandedToolLogs = mutableSetOf<Int>() // Track expanded tool logs
     var onRetryClick: ((Int, ChatMessage) -> Unit)? = null
+    var onTtsClick: ((String, Int) -> Unit)? = null  // TTS朗读回调 (text, position)
+    var isTtsSpeaking = false  // 跟踪 TTS 状态
+    var speakingPosition = -1  // 正在朗读的消息位置
 
     fun addMessage(message: ChatMessage) {
         messages.add(message)
@@ -195,6 +198,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val layoutToolLog: LinearLayout = itemView.findViewById(R.id.layoutToolLog)
         private val tvToolSummary: TextView = itemView.findViewById(R.id.tvToolSummary)
         private val tvToolDetail: TextView = itemView.findViewById(R.id.tvToolDetail)
+        private val btnTts: android.widget.ImageButton = itemView.findViewById(R.id.btnTts)
         private val tvModelTag: TextView = itemView.findViewById(R.id.tvModelTag)
         private val cardAvatar: View = itemView.findViewById(R.id.cardAvatar)
         private val tvAvatarEmoji: TextView = itemView.findViewById(R.id.tvAvatarEmoji)
@@ -336,6 +340,24 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                     tvModelTag.visibility = View.VISIBLE
                 } else {
                     tvModelTag.visibility = View.GONE
+                }
+
+                // TTS 朗读按钮（有文本内容时显示）
+                val hasText = message.content.isNotBlank() && !message.content.startsWith("📄 ")
+                if (hasText) {
+                    btnTts.visibility = View.VISIBLE
+                    // 正在朗读此消息时高亮
+                    val isThisSpeaking = isTtsSpeaking && position == speakingPosition
+                    btnTts.setImageResource(
+                        if (isThisSpeaking) android.R.drawable.ic_media_pause
+                        else android.R.drawable.ic_lock_silent_mode_off
+                    )
+                    btnTts.setOnClickListener {
+                        onTtsClick?.invoke(message.content, position)
+                    }
+                } else {
+                    btnTts.visibility = View.GONE
+                    btnTts.setOnClickListener(null)
                 }
 
                 // AI 图片（点击放大）
@@ -679,22 +701,19 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     }
 
     /**
-     * 全屏查看图片
+     * 全屏查看图片（使用 ImageViewerActivity，支持双指缩放）
      */
     private fun showFullImage(context: Context, base64: String) {
         try {
-            val bytes = Base64.decode(base64, Base64.DEFAULT)
-            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            val dialog = Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-            val iv = ImageView(context).apply {
-                setImageBitmap(bitmap)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                setBackgroundColor(0xFF000000.toInt())
-                setOnClickListener { dialog.dismiss() }
+            val intent = Intent(context, ImageViewerActivity::class.java).apply {
+                putExtra("image_base64", base64)
             }
-            dialog.setContentView(iv)
-            dialog.show()
+            if (context is android.app.Activity) {
+                context.startActivity(intent)
+            } else {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            }
         } catch (_: Exception) {
             Toast.makeText(context, context.getString(R.string.image_save_failed), Toast.LENGTH_SHORT).show()
         }
@@ -717,12 +736,24 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                 }
                 return
             }
+            // PDF 文件使用内置查看器
+            if (fileName.endsWith(".pdf")) {
+                val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("file_path", file.absolutePath)
+                }
+                if (context is android.app.Activity) {
+                    context.startActivity(intent)
+                } else {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
+                return
+            }
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             val mime = when {
                 fileName.endsWith(".txt") || fileName.endsWith(".md") -> "text/plain"
                 fileName.endsWith(".json") -> "application/json"
                 fileName.endsWith(".html") || fileName.endsWith(".htm") -> "text/html"
-                fileName.endsWith(".pdf") -> "application/pdf"
                 fileName.endsWith(".doc") -> "application/msword"
                 fileName.endsWith(".docx") -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 fileName.endsWith(".csv") -> "text/csv"

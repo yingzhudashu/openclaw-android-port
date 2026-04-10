@@ -285,6 +285,19 @@
                         android:lineSpacingExtra="3dp"
                         android:textIsSelectable="true" />
 
+                    <!-- TTS 朗读按钮 -->
+                    <ImageButton
+                        android:id="@+id/btnTts"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="朗读"
+                        android:src="@android:drawable/ic_lock_silent_mode_off"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone" />
+
                     <!-- 模型名（小字，气泡底部） -->
                     <TextView
                         android:id="@+id/tvModelTag"

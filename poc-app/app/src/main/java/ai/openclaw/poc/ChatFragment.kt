@@ -1,9 +1,11 @@
-package ai.openclaw.poc
+﻿package ai.openclaw.poc
 
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -82,6 +84,8 @@ class ChatFragment : Fragment() {
     // Fix #5: Use a flag to prevent rescheduling after view is destroyed
     @Volatile
     private var healthCheckRunning = false
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
 
     private val healthCheckRunnable = object : Runnable {
         override fun run() {
@@ -212,6 +216,17 @@ class ChatFragment : Fragment() {
             sendMessage()
         }
 
+        // TTS initialization
+        tts = TextToSpeech(requireContext()) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                ttsReady = true
+                Log.d("TTS_TEST", "TTS engine ready")
+            }
+        }
+
+        messageAdapter.onTtsClick = { text, position -> handleTtsClick(text, position) }
+
+
         // Start gateway health check
         healthCheckRunning = true  // Fix #5: Enable health check
         healthCheckHandler.postDelayed(healthCheckRunnable, 10000)
@@ -252,6 +267,9 @@ class ChatFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
         // Fix #9: Disable health check to prevent rescheduling
         healthCheckRunning = false
         networkCallback?.let {
@@ -1387,4 +1405,62 @@ class ChatFragment : Fragment() {
             if (text.length > 100) text else null
         } catch (_: Exception) { null }
     }
+
+    private fun handleTtsClick(text: String, position: Int) {
+        if (!ttsReady || tts == null) {
+            Toast.makeText(requireContext(), "TTS not ready", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val cleanText = text.replace(Regex("[*_`#]"), "").trim()
+        if (cleanText.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.tts_no_text), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (messageAdapter.isTtsSpeaking && messageAdapter.speakingPosition == position) {
+            tts?.stop()
+            messageAdapter.isTtsSpeaking = false
+            messageAdapter.speakingPosition = -1
+            messageAdapter.notifyItemChanged(position)
+            return
+        }
+        if (messageAdapter.isTtsSpeaking) {
+            tts?.stop()
+            messageAdapter.isTtsSpeaking = false
+            if (messageAdapter.speakingPosition >= 0) messageAdapter.notifyItemChanged(messageAdapter.speakingPosition)
+            messageAdapter.speakingPosition = -1
+        }
+
+        messageAdapter.isTtsSpeaking = true
+        messageAdapter.speakingPosition = position
+        messageAdapter.notifyItemChanged(position)
+
+        tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(utteranceId: String) {}
+            override fun onDone(utteranceId: String) {
+                requireActivity().runOnUiThread {
+                    messageAdapter.isTtsSpeaking = false
+                    messageAdapter.speakingPosition = -1
+                    messageAdapter.notifyItemChanged(position)
+                }
+            }
+            override fun onError(utteranceId: String) {
+                requireActivity().runOnUiThread {
+                    messageAdapter.isTtsSpeaking = false
+                    messageAdapter.speakingPosition = -1
+                    messageAdapter.notifyItemChanged(position)
+                    Toast.makeText(requireContext(), getString(R.string.tts_failed), Toast.LENGTH_LONG).show()
+                }
+            }
+        })
+
+        val params = Bundle().apply {
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+        }
+        val result = tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, params, "utterance_$position")
+        Log.d("TTS_TEST", "speak result=$result")
+
+        Toast.makeText(requireContext(), getString(R.string.tts_started), Toast.LENGTH_SHORT).show()
+    }
+
 }

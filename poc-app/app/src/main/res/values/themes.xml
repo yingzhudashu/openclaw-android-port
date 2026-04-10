@@ -17,4 +17,12 @@
         <item name="tabSelectedTextColor">@color/tab_selected</item>
         <item name="tabIndicatorColor">@color/tab_indicator</item>
     </style>
+
+    <!-- Fullscreen theme for image/PDF viewers -->
+    <style name="Theme.OpenClaw.Fullscreen" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>

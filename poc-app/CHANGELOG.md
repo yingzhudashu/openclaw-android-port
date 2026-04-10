@@ -1,9 +1,70 @@
-﻿# Changelog
+# Changelog
 
 所有重要变更都将记录在此文件中。
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+---
+
+## [1.4.0] - 2026-04-10
+
+**语音朗读 + 全屏图片查看器 + PDF 查看器。**
+
+本版本新增了 TTS 语音朗读功能，每条 AI 消息均可一键朗读；重写了图片查看器为独立的全屏 Activity，支持双指缩放与拖拽；新增 PDF 查看器，基于 Android 原生 `PdfRenderer` 实现，无需第三方依赖。
+
+### 新增
+
+#### 语音朗读（TTS）
+
+- 新增 `TextToSpeech` 引擎集成，基于 Android 原生 TTS 服务
+- 每条 AI 消息旁新增朗读按钮（🔊），点击即可语音播放
+- 支持播放/暂停切换，正在朗读时按钮变为暂停图标
+- 自动过滤 Markdown 格式符号（`*`、`_`、`` ` ``、`#`），朗读更自然
+- 新增 `AndroidManifest.xml` `<queries>` 声明 TTS_SERVICE（Android 11+ Package Visibility 要求）
+- 适配 MIUI/HyperOS 系统音频策略，确保前台播放不被静音
+- 新增字符串资源：`tts_started`、`tts_stopped`、`tts_failed`、`tts_not_ready`、`tts_no_text`
+- `MessageAdapter` 新增 `onTtsClick` 回调、`isTtsSpeaking` 和 `speakingPosition` 状态跟踪
+- `ChatFragment` 新增 `handleTtsClick()` 方法管理 TTS 生命周期
+- `onDestroyView` 中正确释放 TTS 资源（`stop()` + `shutdown()`）
+
+#### 全屏图片查看器
+
+- 新增 `ImageViewerActivity.kt`，替代旧的 Dialog 式图片查看
+- 自定义 `TouchImageView` 控件：
+  - **双指缩放**：`ScaleGestureDetector` 实现，支持 0.5x ~ 5x 缩放
+  - **拖拽平移**：放大后可手指拖动查看细节
+  - **双击放大/还原**：双击放大至 3x，再双击还原至适应屏幕
+  - **点击返回**：单击图片即关闭查看器
+- 新增 `activity_image_viewer.xml` 布局，沉浸式全屏体验
+- 新增 `Theme.OpenClaw.Fullscreen` 主题（透明状态栏/导航栏，黑色背景）
+- 图片以 base64 通过 Intent 传递，无需文件 I/O
+
+#### PDF 查看器
+
+- 新增 `PdfViewerActivity.kt`，基于 Android 原生 `PdfRenderer`
+- 支持 PDF 文件的分页浏览
+- 上一页/下一页按钮，显示当前页码与总页数
+- 无需引入第三方 PDF 库，零额外依赖
+- 新增 `activity_pdf_viewer.xml` 布局
+
+### 修复
+
+- **图片查看器升级**：旧版 Dialog 方式不支持缩放，新版独立 Activity 支持完整手势操作
+- **TTS 引擎初始化**：确保 Android 11+ 正确发现 TTS 服务（`<queries>` 声明）
+
+### 改动
+
+- `MessageAdapter` 重构图片查看逻辑，从 Dialog 改为启动 `ImageViewerActivity`
+- `fragment_chat.xml` 新增记忆搜索按钮的内容描述
+- `themes.xml` 新增全屏主题样式
+
+### 统计数据
+
+- 新增 2 个 Kotlin 文件（`ImageViewerActivity.kt`、`PdfViewerActivity.kt`）
+- 新增 2 个 XML 布局文件
+- 修改 9 个文件
+- versionCode 4 → 5
 
 ---
 
@@ -16,33 +77,33 @@
 ### 新增
 
 #### 设备控制 API（DeviceControlApi）
-- 新增 \DeviceControlApi.kt\，在 \127.0.0.1:18791\ 端口提供本地 HTTP 接口
-- \POST /device/camera/snap\ — 调用系统相机拍照，返回 base64 图片数据
-- \GET /device/location\ — 获取当前 GPS 经纬度
-- \GET /device/notifications\ — 读取最近系统通知列表
-- 配套新增 \CameraCaptureActivity.kt\（透明 Activity，后台触发相机 Intent）
-- 配套新增 \PhotoStore.kt\（照片缓冲区，支持异步等待 + 超时保护）
+- 新增 `DeviceControlApi.kt`，在 `127.0.0.1:18791` 端口提供本地 HTTP 接口
+- `POST /device/camera/snap` — 调用系统相机拍照，返回 base64 图片数据
+- `GET /device/location` — 获取当前 GPS 经纬度
+- `GET /device/notifications` — 读取最近系统通知列表
+- 配套新增 `CameraCaptureActivity.kt`（透明 Activity，后台触发相机 Intent）
+- 配套新增 `PhotoStore.kt`（照片缓冲区，支持异步等待 + 超时保护）
 
 #### 权限管理系统
-- 新增 \PermissionManager.kt\，统一管理 5 类运行时权限：
+- 新增 `PermissionManager.kt`，统一管理 5 类运行时权限：
   - 位置 — ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION
   - 相机 — CAMERA
   - 麦克风 — RECORD_AUDIO
   - 通知 — POST_NOTIFICATIONS（Android 13+）
   - 存储 — READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE（版本自适应）
-- \MainActivity\ 首次启动自动请求缺失权限
+- `MainActivity` 首次启动自动请求缺失权限
 - 设置页新增权限状态展示，可一键跳转系统设置管理
-- \AndroidManifest.xml\ 补充完整权限声明
+- `AndroidManifest.xml` 补充完整权限声明
 
 #### 社区规范文件
-- 新增 \LICENSE\（MIT）
-- 新增 \CONTRIBUTING.md\（贡献指南，含开发环境搭建、代码规范、PR Checklist）
-- 新增 \SECURITY.md\（安全策略，含已知安全限制、最佳实践）
-- 新增 \CODE_OF_CONDUCT.md\（Contributor Covenant 2.1 行为准则）
-- 新增 \.gitignore\（覆盖 Android/IDE/OS/运行时数据等完整规则）
+- 新增 `LICENSE`（MIT）
+- 新增 `CONTRIBUTING.md`（贡献指南，含开发环境搭建、代码规范、PR Checklist）
+- 新增 `SECURITY.md`（安全策略，含已知安全限制、最佳实践）
+- 新增 `CODE_OF_CONDUCT.md`（Contributor Covenant 2.1 行为准则）
+- 新增 `.gitignore`（覆盖 Android/IDE/OS/运行时数据等完整规则）
 
 #### 集成测试
-- 新增 \ComprehensiveTest.kt\，内置测试套件覆盖：
+- 新增 `ComprehensiveTest.kt`，内置测试套件覆盖：
   - Gateway API（健康检查、聊天、会话、工具列表）
   - Browser Bridge 连通性
   - Device Control API 可用性
@@ -50,32 +111,28 @@
 - 可在设置页一键运行，输出结构化报告
 
 #### Gateway 增强
-- Cron 任务持久化存储（\cron_tasks.json\），重启不丢失
-- Gateway 版本号升级为 \1.3.0-android\
+- Cron 任务持久化存储（`cron_tasks.json`），重启不丢失
+- Gateway 版本号升级为 `1.3.0-android`
 
 ### 修复
 
 #### 多模态图片 token 估算（严重 Bug）
-- **问题**：\	runcateMessages\ 使用 \JSON.stringify(m.content)\ 估算 token，500KB 图片的 base64 编码（~68 万字符）被误算为 ~227,000 tokens，远超 \MAX_CONTEXT_TOKENS\（120,000）导致图片消息被丢弃，LLM 仅收到纯文本 "请分析这张图片"
-- **修复**：新增 \estimateMessageTokens()\ 函数，区分 \	ype: 'text'\ 和 \	ype: 'image_url'\，图片按 Vision API 标准固定估算 ~800 tokens/张
+- **问题**：`truncateMessages` 使用 `JSON.stringify(m.content)` 估算 token，500KB 图片的 base64 编码（~68 万字符）被误算为 ~227,000 tokens，远超 `MAX_CONTEXT_TOKENS`（120,000）导致图片消息被丢弃，LLM 仅收到纯文本 "请分析这张图片"
+- **修复**：新增 `estimateMessageTokens()` 函数，区分 `type: 'text'` 和 `type: 'image_url'`，图片按 Vision API 标准固定估算 ~800 tokens/张
 - **增强**：截断逻辑强制保留最新用户消息，确保当前轮次内容不会丢失
 
 #### 健康检查生命周期
-- 修复 \ChatFragment\ 中 health check 在 \onDestroyView\ 后仍被调度执行的问题（Fix #5/#9）
-- 新增 \healthCheckRunning\ 标志位，视图销毁时立即停止调度
+- 修复 `ChatFragment` 中 health check 在 `onDestroyView` 后仍被调度执行的问题（Fix #5/#9）
+- 新增 `healthCheckRunning` 标志位，视图销毁时立即停止调度
 
 #### 会话创建
-- \createNewSession()\ 改为 \suspend\ 函数，返回 Boolean 标识成功/失败
+- `createNewSession()` 改为 `suspend` 函数，返回 Boolean 标识成功/失败
 - 欢迎语自动保存到 Gateway 服务端，跨会话切换不丢失
 - 修复重试后 pending 文件/图片恢复（Fix #7/#8）
 
-#### 设置页
-- 权限状态展示集成
-- 布局文件优化
-
 ### 文档
-- 全面重写 \README.md\，新增架构详解、端口分配表、技术栈说明、开发指南、路线图
-- 更新 \CHANGELOG.md\ 格式，对齐 Keep a Changelog 规范
+- 全面重写 `README.md`，新增架构详解、端口分配表、技术栈说明、开发指南、路线图
+- 更新 `CHANGELOG.md` 格式，对齐 Keep a Changelog 规范
 - 新增完整社区规范文件（5 个）
 
 ### 统计数据

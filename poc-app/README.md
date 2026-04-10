@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.3.0-green.svg" alt="Version: 1.3.0"></a>
+  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.4.0-green.svg" alt="Version: 1.4.0"></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-2.0-purple.svg" alt="Kotlin"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-embedded-brightgreen.svg" alt="Node.js embedded"></a>
 </p>
@@ -32,6 +32,28 @@
 | **进程管理** | 后台命令执行 + 进程监控（process tool） |
 | **向量记忆** | embedding + cosine similarity 语义搜索 |
 | **Skills 自动加载** | 扫描 skills/ 目录自动注入 system_prompt |
+
+### 🔊 语音朗读（TTS）
+
+v1.4.0 新增：每条 AI 消息旁都有朗读按钮，点击即可语音播放。
+
+- 基于 Android 原生 `TextToSpeech` 引擎
+- 支持播放/暂停切换
+- 自动过滤 Markdown 格式符号
+- 适配 MIUI/HyperOS 系统音频策略
+
+### 🖼️ 图片与多模态
+
+- **全屏图片查看器**（v1.4.0 新增）：点击聊天中的图片即可全屏查看，支持双指缩放、拖拽、双击放大/还原
+- 支持图片上传与 AI 分析
+- 智能 token 估算（图片固定 ~800 tokens/张，对齐 Vision API 标准）
+- 消息上下文自动截断，确保图片不被误丢弃
+
+### 📄 PDF 查看器（v1.4.0 新增）
+
+- 基于 Android 原生 `PdfRenderer`
+- 支持分页浏览、缩放查看
+- 无需第三方依赖
 
 ### 🔧 多模型支持
 
@@ -69,12 +91,6 @@
 | **设备控制 API** | 相机拍照、GPS 定位、通知读取（端口 18791） |
 | **运行时权限** | 位置/相机/通知/存储权限统一管理 |
 
-### 📷 图片与多模态
-
-- 支持图片上传与 AI 分析
-- 智能 token 估算（图片固定 ~800 tokens/张，对齐 Vision API 标准）
-- 消息上下文自动截断，确保图片不被误丢弃
-
 ---
 
 ## 🏗️ 架构
@@ -83,7 +99,9 @@
 ┌─────────────────────────────────────────────────────────┐
 │              Android App (Kotlin)                        │
 │                                                         │
-│  ChatFragment ──── MessageAdapter                       │
+│  ChatFragment ──── MessageAdapter ──── TTS Engine       │
+│  ImageViewerActivity ──── TouchImageView                │
+│  PdfViewerActivity ──── PdfRenderer                     │
 │  SettingsFragment ──── SettingDetailFragment            │
 │  StatusFragment ──── CronFragment                       │
 │       │                    │                            │
@@ -146,7 +164,10 @@ poc-app/
 ├── app/src/main/
 │   ├── java/ai/openclaw/poc/
 │   │   ├── MainActivity.kt            # 主 Activity + Tab 导航 + 权限请求
-│   │   ├── ChatFragment.kt            # 聊天界面 + SSE 流式处理 + 健康检查
+│   │   ├── ChatFragment.kt            # 聊天界面 + SSE 流式处理 + TTS 朗读
+│   │   ├── MessageAdapter.kt          # 消息列表适配器（含 TTS 按钮）
+│   │   ├── ImageViewerActivity.kt     # 全屏图片查看器（双指缩放）
+│   │   ├── PdfViewerActivity.kt       # PDF 查看器（分页浏览）
 │   │   ├── SettingsFragment.kt        # 设置页（模型/供应商/备份/权限状态）
 │   │   ├── SettingDetailFragment.kt   # Markdown 编辑器（MEMORY.md 编辑）
 │   │   ├── StatusFragment.kt          # Gateway 状态监控
@@ -157,7 +178,6 @@ poc-app/
 │   │   ├── GatewayService.kt          # Foreground Service
 │   │   ├── NodeRunner.kt              # Node.js 进程管理
 │   │   ├── ApiClient.kt               # HTTP 客户端
-│   │   ├── MessageAdapter.kt          # 消息列表适配器
 │   │   ├── Session.kt                 # 会话数据模型
 │   │   ├── WebViewBridge.kt           # 浏览器桥接（18790 端口）
 │   │   ├── DeviceControlApi.kt        # 设备控制 API（18791 端口）
@@ -166,8 +186,7 @@ poc-app/
 │   │   ├── PermissionManager.kt       # 运行时权限管理
 │   │   ├── ComprehensiveTest.kt       # 集成测试套件
 │   │   ├── ViewPagerAdapter.kt        # Tab 页适配器
-│   │   ├── LocaleHelper.kt            # 多语言支持
-│   │   └── adapter/                   # 设置页适配器
+│   │   └── LocaleHelper.kt            # 多语言支持
 │   ├── assets/openclaw-engine/
 │   │   ├── android-gateway.cjs        # Gateway 核心（4000+ 行）
 │   │   ├── openclaw.json              # 运行时配置
@@ -334,11 +353,13 @@ App 内置 Comprehensive Test 套件：
 - [x] 设备控制 API（相机/位置/通知）
 - [x] 运行时权限管理
 - [x] 多模态图片识别修复
+- [x] 语音朗读（TTS）
+- [x] 全屏图片查看器（双指缩放）
+- [x] PDF 查看器
 
 ### 规划中
 - [ ] Release 构建（R8 混淆 + 签名）
 - [ ] x86_64 架构支持（模拟器）
-- [ ] 语音输入功能回归
 - [ ] 消息加密传输
 - [ ] F-Droid 上架
 

@@ -140,6 +140,7 @@ class CronAdapter(
         } else {
             holder.itemView.context.getString(R.string.cron_never_run)
         }
+        holder.switchEnabled.setOnCheckedChangeListener(null)
         holder.switchEnabled.isChecked = task.enabled
         holder.switchEnabled.setOnCheckedChangeListener { _, checked -> onToggle(task, checked) }
         holder.itemView.setOnClickListener { onEdit(task) }

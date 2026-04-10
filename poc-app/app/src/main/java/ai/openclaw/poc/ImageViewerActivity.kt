@@ -39,6 +39,16 @@ class ImageViewerActivity : AppCompatActivity() {
         btnBack.setOnClickListener { finish() }
         imageView.setOnClickListener { finish() }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Recycle bitmap to prevent memory leak
+        val bitmap = imageView.drawable?.let { (it as? android.graphics.drawable.BitmapDrawable)?.bitmap }
+        if (bitmap != null && !bitmap.isRecycled) {
+            bitmap.recycle()
+        }
+        imageView.setOnClickListener(null)
+    }
 }
 
 /**
@@ -57,6 +67,11 @@ class TouchImageView @JvmOverloads constructor(
     private var transX = 0f
     private var transY = 0f
 
+    // Initial center offset (calculated once when bitmap is set)
+    private var centerOffsetX = 0f
+    private var centerOffsetY = 0f
+    private var centerCalculated = false
+
     // Scale gesture detector
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -73,11 +88,21 @@ class TouchImageView @JvmOverloads constructor(
             if (scaleFactor > 1.0f) {
                 // Zoom out to fit
                 scaleFactor = 1.0f
-                transX = 0f
-                transY = 0f
+                recalculateCenter()
             } else {
                 // Zoom in to 3x at tap position
                 scaleFactor = 3.0f
+                recalculateCenter()
+                // Adjust to zoom towards tap point
+                val drawable = drawable ?: return true
+                val bmpWidth = drawable.intrinsicWidth.toFloat()
+                val bmpHeight = drawable.intrinsicHeight.toFloat()
+                if (bmpWidth > 0 && bmpHeight > 0) {
+                    val tapX = (e.x - width / 2f) - centerOffsetX
+                    val tapY = (e.y - height / 2f) - centerOffsetY
+                    transX = centerOffsetX - tapX * 0.4f
+                    transY = centerOffsetY - tapY * 0.4f
+                }
             }
             invalidate()
             return true
@@ -91,6 +116,38 @@ class TouchImageView @JvmOverloads constructor(
 
     init {
         scaleType = ScaleType.MATRIX
+    }
+
+    override fun setImageBitmap(bm: android.graphics.Bitmap?) {
+        super.setImageBitmap(bm)
+        // Reset and recalculate center when new bitmap is set
+        scaleFactor = 1.0f
+        centerCalculated = false
+        recalculateCenter()
+    }
+
+    private fun recalculateCenter() {
+        val drawable = drawable ?: return
+        val bmpWidth = drawable.intrinsicWidth.toFloat()
+        val bmpHeight = drawable.intrinsicHeight.toFloat()
+        if (bmpWidth <= 0 || bmpHeight <= 0) return
+
+        // Scaled bitmap dimensions
+        val scaledWidth = bmpWidth * scaleFactor
+        val scaledHeight = bmpHeight * scaleFactor
+
+        // Center offsets: how much to shift to center the image in the view
+        centerOffsetX = (width - scaledWidth) / 2f
+        centerOffsetY = (height - scaledHeight) / 2f
+        transX = centerOffsetX
+        transY = centerOffsetY
+        centerCalculated = true
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // View size changed (e.g., first layout), recalculate center
+        recalculateCenter()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -111,6 +168,7 @@ class TouchImageView @JvmOverloads constructor(
                     transY += dy
                     lastTouchX = event.x
                     lastTouchY = event.y
+                    clampTranslation()
                     invalidate()
                 }
             }
@@ -121,7 +179,31 @@ class TouchImageView @JvmOverloads constructor(
         return true
     }
 
+    /**
+     * Clamp translation to prevent image from being dragged completely off screen.
+     * At least 1/3 of the image must remain visible.
+     */
+    private fun clampTranslation() {
+        val drawable = drawable ?: return
+        val bmpWidth = drawable.intrinsicWidth.toFloat()
+        val bmpHeight = drawable.intrinsicHeight.toFloat()
+        if (bmpWidth <= 0 || bmpHeight <= 0) return
+
+        val scaledWidth = bmpWidth * scaleFactor
+        val scaledHeight = bmpHeight * scaleFactor
+
+        // Max allowed translation (allow image to move up to 2/3 off screen)
+        val maxTx = (scaledWidth * 2 / 3f + width) / 2f
+        val maxTy = (scaledHeight * 2 / 3f + height) / 2f
+
+        transX = transX.coerceIn(-maxTx, maxTx)
+        transY = transY.coerceIn(-maxTy, maxTy)
+    }
+
     override fun onDraw(canvas: android.graphics.Canvas) {
+        if (!centerCalculated) {
+            recalculateCenter()
+        }
         canvas.save()
         canvas.translate(transX, transY)
         canvas.scale(scaleFactor, scaleFactor, width / 2f, height / 2f)

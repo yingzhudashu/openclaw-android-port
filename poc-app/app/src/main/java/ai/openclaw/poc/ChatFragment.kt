@@ -270,14 +270,22 @@ class ChatFragment : Fragment() {
         tts?.stop()
         tts?.shutdown()
         tts = null
-        // Fix #9: Disable health check to prevent rescheduling
+        // Disable health check to prevent rescheduling
         healthCheckRunning = false
-        networkCallback?.let {
-            val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            cm.unregisterNetworkCallback(it)
+        // Use context instead of requireContext() to avoid IllegalStateException after detach
+        networkCallback?.let { callback ->
+            context?.getSystemService(Context.CONNECTIVITY_SERVICE)?.let { cm ->
+                try { (cm as ConnectivityManager).unregisterNetworkCallback(callback) } catch (_: Exception) {}
+            }
         }
         networkCallback = null
         healthCheckHandler.removeCallbacks(healthCheckRunnable)
+        // Save current session for language-change recovery
+        context?.getSharedPreferences("openclaw_prefs", 0)?.edit()?.apply {
+            putString("current_session_id", sessionId)
+            putString("current_session_title", currentSessionTitle)
+            apply()
+        }
     }
 
     // ─── Top Bar ─────────────────────────────────────────────────────────────
@@ -486,6 +494,12 @@ class ChatFragment : Fragment() {
 
         if (!isNetworkAvailable) {
             Toast.makeText(requireContext(), getString(R.string.network_offline_hint), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Guard: don't send if no session
+        if (sessionId.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.chat_no_session), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -1068,6 +1082,10 @@ class ChatFragment : Fragment() {
         val retryDelays = longArrayOf(1000L, 3000L)
         var lastException: Exception? = null
         for (attempt in 0..retryDelays.size) {
+            // Add retry delay (except first attempt)
+            if (attempt > 0) {
+                Thread.sleep(retryDelays[attempt - 1])
+            }
             try {
                 val url = URL("$BASE_URL/api/agent/chat")
                 val conn = url.openConnection() as HttpURLConnection
@@ -1438,18 +1456,19 @@ class ChatFragment : Fragment() {
         tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
             override fun onStart(utteranceId: String) {}
             override fun onDone(utteranceId: String) {
-                requireActivity().runOnUiThread {
+                // Use view?.post to avoid crash if fragment is detached
+                view?.post {
                     messageAdapter.isTtsSpeaking = false
                     messageAdapter.speakingPosition = -1
                     messageAdapter.notifyItemChanged(position)
                 }
             }
             override fun onError(utteranceId: String) {
-                requireActivity().runOnUiThread {
+                view?.post {
                     messageAdapter.isTtsSpeaking = false
                     messageAdapter.speakingPosition = -1
                     messageAdapter.notifyItemChanged(position)
-                    Toast.makeText(requireContext(), getString(R.string.tts_failed), Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, getString(R.string.tts_failed), Toast.LENGTH_LONG).show()
                 }
             }
         })

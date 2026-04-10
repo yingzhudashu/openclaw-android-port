@@ -158,7 +158,12 @@ class NodeRunner(private val context: Context) {
             conn.readTimeout = HEALTH_TIMEOUT_MS
             conn.requestMethod = "GET"
             val code = conn.responseCode
-            val body = conn.inputStream.bufferedReader().readText()
+            // Read error stream on non-2xx to avoid FileNotFoundException
+            val body = if (code in 200..299) {
+                conn.inputStream.bufferedReader().readText()
+            } else {
+                conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+            }
             conn.disconnect()
             val ok = code == 200
             log("Health: HTTP $code — $body")

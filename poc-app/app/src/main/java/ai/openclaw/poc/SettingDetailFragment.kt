@@ -163,8 +163,11 @@ class SettingDetailFragment : Fragment() {
     private fun httpGet(urlStr: String): JSONObject {
         val conn = URL(urlStr).openConnection() as HttpURLConnection
         conn.requestMethod = "GET"; conn.connectTimeout = 5000; conn.readTimeout = 5000
-        val body = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
+        val code = conn.responseCode
+        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+        val body = if (stream != null) BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() } else "HTTP $code"
         conn.disconnect()
+        if (code !in 200..299) throw Exception("HTTP $code: $body")
         return JSONObject(body)
     }
 
@@ -174,6 +177,10 @@ class SettingDetailFragment : Fragment() {
         conn.setRequestProperty("Content-Type", "application/json")
         conn.doOutput = true; conn.connectTimeout = 5000; conn.readTimeout = 10000
         OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(json.toString()) }
-        conn.inputStream.close(); conn.disconnect()
+        val code = conn.responseCode
+        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+        stream?.close()
+        conn.disconnect()
+        if (code !in 200..299) throw Exception("HTTP $code")
     }
 }

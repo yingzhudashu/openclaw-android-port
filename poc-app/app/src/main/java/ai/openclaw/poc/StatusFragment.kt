@@ -148,7 +148,7 @@ class StatusFragment : Fragment() {
 
         // 日志回调
         (activity as? MainActivity)?.registerLogCallback { msg ->
-            requireActivity().runOnUiThread { appendLog(msg) }
+            view?.post { appendLog(msg) }
         }
 
         // 加载数据
@@ -182,10 +182,14 @@ class StatusFragment : Fragment() {
     }
 
     private fun appendLog(message: String) {
+        // Guard against calls after view destruction
+        if (!::tvLogs.isInitialized) return
         logBuffer.appendLine(message)
         if (logBuffer.length > 10000) logBuffer.delete(0, logBuffer.length - 8000)
         tvLogs.text = logBuffer.toString()
-        tvLogsSummary.text = message.take(30)
+        if (::tvLogsSummary.isInitialized) {
+            tvLogsSummary.text = message.take(30)
+        }
     }
 
     // ─── Normalize engine status ─────────────────────────────────────────
@@ -473,9 +477,11 @@ class StatusFragment : Fragment() {
         val conn = URL(urlStr).openConnection() as HttpURLConnection
         conn.requestMethod = "GET"; conn.connectTimeout = 5000; conn.readTimeout = 5000
         val code = conn.responseCode
-        val body = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
+        // Fix: read errorStream on non-2xx to prevent FileNotFoundException
+        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+        val body = if (stream != null) BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() } else "HTTP $code"
         conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code")
+        if (code !in 200..299) throw Exception("HTTP $code: $body")
         return JSONObject(body)
     }
 }

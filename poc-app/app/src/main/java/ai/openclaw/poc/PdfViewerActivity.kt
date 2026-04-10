@@ -90,9 +90,14 @@ class PdfViewerActivity : AppCompatActivity() {
         val width = (page.width * scaleFactor).toInt()
         val height = (page.height * scaleFactor).toInt()
 
+        // Recycle old bitmap to prevent memory leak
+        val oldBitmap = (ivPage.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
         ivPage.setImageBitmap(bitmap)
+        if (oldBitmap != null && oldBitmap != bitmap && !oldBitmap.isRecycled) {
+            oldBitmap.recycle()
+        }
 
         tvPageInfo.text = "${pageIndex + 1} / $pageCount"
         btnPrev.isEnabled = pageIndex > 0
@@ -113,5 +118,10 @@ class PdfViewerActivity : AppCompatActivity() {
         super.onDestroy()
         currentPage?.close()
         pdfRenderer?.close()
+        // Recycle bitmap to prevent memory leak
+        val oldBitmap = (ivPage.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+        if (oldBitmap != null && !oldBitmap.isRecycled) {
+            oldBitmap.recycle()
+        }
     }
 }

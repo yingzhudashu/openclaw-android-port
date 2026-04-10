@@ -68,8 +68,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     var speakingPosition = -1  // 正在朗读的消息位置
 
     fun addMessage(message: ChatMessage) {
+        val pos = messages.size
         messages.add(message)
-        notifyItemInserted(messages.size - 1)
+        notifyItemInserted(pos)
     }
 
     fun updateLastAiMessage(content: String) {
@@ -110,6 +111,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
 
     fun highlightSearch(query: String): Int {
         searchQuery = query.lowercase()
+        val count = messages.size // Cache size before iteration
         notifyDataSetChanged()
         // Return first matching position
         for (i in messages.indices.reversed()) {
@@ -574,8 +576,10 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
      * 渲染行内格式：**加粗**、`代码`、_斜体_、[链接](url)
      */
     private fun renderInline(ssb: SpannableStringBuilder, text: String, codeBg: Int, codeText: Int, linkColor: Int) {
+        if (text.isEmpty()) return
         var i = 0
-        while (i < text.length) {
+        val len = text.length // cache length for performance
+        while (i < len) {
             when {
                 // 加粗 **text**
                 i + 1 < text.length && text[i] == '*' && text[i + 1] == '*' -> {

@@ -1,4 +1,4 @@
-﻿package ai.openclaw.poc
+package ai.openclaw.poc
 
 import android.app.Activity
 import android.content.Context
@@ -220,7 +220,7 @@ class ChatFragment : Fragment() {
         tts = TextToSpeech(requireContext()) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 ttsReady = true
-                Log.d("TTS_TEST", "TTS engine ready")
+                Log.d("TTS", "TTS engine ready")
             }
         }
 
@@ -1458,7 +1458,7 @@ class ChatFragment : Fragment() {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
         }
         val result = tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, params, "utterance_$position")
-        Log.d("TTS_TEST", "speak result=$result")
+        Log.d("TTS", "speak result=$result")
 
         Toast.makeText(requireContext(), getString(R.string.tts_started), Toast.LENGTH_SHORT).show()
     }

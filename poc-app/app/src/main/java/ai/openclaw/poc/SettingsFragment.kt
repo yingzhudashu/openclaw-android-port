@@ -48,6 +48,7 @@ class SettingsFragment : Fragment() {
     private lateinit var tvEmbeddingSummary: TextView
     private lateinit var tvMemoryModeSummary: TextView
     private lateinit var tvPermissionSummary: TextView
+    private lateinit var tvTavilySummary: TextView
 
     private var cachedMaxSteps = 25
     private var cachedEmbeddingModel = ""
@@ -105,6 +106,7 @@ class SettingsFragment : Fragment() {
         view.findViewById<View>(R.id.cellSkillInstall).setOnClickListener { showSkillInstaller() }
         view.findViewById<View>(R.id.cellClearCache).setOnClickListener { clearEngineCache() }
         view.findViewById<View>(R.id.cellEmbedding).setOnClickListener { showEmbeddingEditor() }
+        view.findViewById<View>(R.id.cellTavily).setOnClickListener { showTavilyEditor() }
         view.findViewById<View>(R.id.cellMemoryMode).setOnClickListener { showMemoryModePicker() }
         view.findViewById<View>(R.id.cellBackup).setOnClickListener { performBackup() }
         view.findViewById<View>(R.id.cellRestore).setOnClickListener { pickRestoreFile() }
@@ -136,6 +138,7 @@ class SettingsFragment : Fragment() {
         tvEmbeddingSummary = view.findViewById(R.id.tvEmbeddingSummary)
         tvMemoryModeSummary = view.findViewById(R.id.tvMemoryModeSummary)
         tvPermissionSummary = view.findViewById(R.id.tvPermissionSummary)
+        tvTavilySummary = view.findViewById(R.id.tvTavilySummary)
 
         try {
             val info = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
@@ -268,6 +271,11 @@ class SettingsFragment : Fragment() {
         } else {
             getString(R.string.settings_memory_mode_basic)
         }
+
+        // Tavily API Key
+        val tavilyObj = config.optJSONObject("tavily")
+        val tavilyKey = tavilyObj?.optString("api_key", "") ?: ""
+        updateTavilySummary(tavilyKey)
 
         // Sync to SharedPreferences for MessageAdapter
         syncModelProviderListsToPrefs(config)
@@ -1101,7 +1109,70 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // (settings handler)
+    // ==================== Tavily Search API ====================
+
+    private fun showTavilyEditor() {
+        val input = EditText(requireContext()).apply {
+            hint = "tvly-..."
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setPadding(60, 30, 60, 30)
+        }
+
+        // 加载当前配置
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
+                val cfgObj = cfg.optJSONObject("config") ?: cfg
+                val tavilyObj = cfgObj.optJSONObject("tavily")
+                val currentKey = tavilyObj?.optString("api_key", "") ?: ""
+                if (currentKey.isNotEmpty()) {
+                    input.setText(currentKey)
+                }
+            } catch (_: Exception) {}
+
+            AlertDialog.Builder(requireContext())
+                .setTitle("🔍 ${getString(R.string.settings_tavily_api_key)}")
+                .setMessage(getString(R.string.settings_tavily_summary))
+                .setView(input)
+                .setPositiveButton(R.string.save) { _, _ ->
+                    val apiKey = input.text.toString().trim()
+                    saveTavilyConfig(apiKey)
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .setNeutralButton(getString(R.string.chat_delete)) { _, _ ->
+                    saveTavilyConfig("")
+                }
+                .show()
+        }
+    }
+
+    private fun saveTavilyConfig(apiKey: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val body = JSONObject().apply {
+                    put("tavily", JSONObject().apply {
+                        put("api_key", apiKey)
+                    })
+                }
+                withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/config", body) }
+                updateTavilySummary(apiKey)
+                snack(if (apiKey.isNotEmpty()) getString(R.string.settings_tavily_saved) else getString(R.string.settings_tavily_cleared))
+            } catch (e: Exception) {
+                snack(getString(R.string.settings_save_failed, e.message ?: ""))
+            }
+        }
+    }
+
+    private fun updateTavilySummary(apiKey: String? = null) {
+        val key = apiKey ?: ""
+        tvTavilySummary.text = if (key.isNotEmpty()) {
+            "tvly-${key.takeLast(4)}"
+        } else {
+            getString(R.string.not_set)
+        }
+    }
+
+    // ==================== Max Steps ====================
 
     private fun showMaxStepsEditor() {
         val presets = arrayOf(10, 15, 20, 25, 30, 50)

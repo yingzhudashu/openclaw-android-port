@@ -351,4 +351,10 @@
     <string name="tts_not_ready">TTS engine not ready, please wait</string>
     <string name="tts_volume_off">Media volume is 0, please turn it up</string>
     <string name="tts_no_text">No text to read</string>
+
+    <!-- Tavily Search -->
+    <string name="settings_tavily_api_key">Tavily Search API Key</string>
+    <string name="settings_tavily_summary">Configure Tavily AI Search</string>
+    <string name="settings_tavily_saved">Tavily API Key saved</string>
+    <string name="settings_tavily_cleared">Tavily API Key cleared</string>
 </resources>

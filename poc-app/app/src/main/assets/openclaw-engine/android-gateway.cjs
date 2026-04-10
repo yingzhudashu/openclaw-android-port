@@ -2482,8 +2482,7 @@ const { exec: execCmd, execSync } = require('child_process');
 // Maximum agent loop iterations to prevent infinite loops (configurable via openclaw.json)
 const DEFAULT_MAX_AGENT_STEPS = 10;
 const TOOL_EXEC_TIMEOUT = 20000; // 20s per tool call
-const TAVILY_API_KEY_BUILTIN = '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';
-function getTavilyKey() { return (config.tavily && config.tavily.api_key) || TAVILY_API_KEY_BUILTIN; }
+function getTavilyKey() { return (config.tavily && config.tavily.api_key) || ''; }
 const BROWSER_BRIDGE_URL = 'http://127.0.0.1:18790';
 const DEVICE_CTRL_URL = 'http://127.0.0.1:18791'; // New: device control endpoint
 
@@ -3323,9 +3322,13 @@ async function executeToolInner(name, args) {
       case 'web_search': {
         const query = args.query;
         const maxResults = args.max_results || 5;
+        const tavilyKey = getTavilyKey();
+        if (!tavilyKey) {
+          return { error: 'Tavily API Key 未配置', detail: '请在 设置 → Tavily 搜索 API Key 中填入你的 tvly-xxx 密钥。前往 https://tavily.com 注册获取。' };
+        }
         // Tavily requires API key in body
         const reqBody = JSON.stringify({
-          api_key: getTavilyKey(),
+          api_key: tavilyKey,
           query,
           max_results: maxResults,
           search_depth: 'basic',

@@ -57,6 +57,25 @@
             <View android:layout_width="match_parent" android:layout_height="0.5dp"
                 android:background="@color/divider" android:layout_marginStart="46dp" />
 
+            <!-- Tavily 搜索 API -->
+            <LinearLayout android:id="@+id/cellTavily" android:layout_width="match_parent" android:layout_height="56dp"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingStart="16dp" android:paddingEnd="16dp"
+                android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="›" android:textSize="18sp" android:layout_marginEnd="12dp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/settings_tavily_api_key" android:textSize="16sp" android:textColor="@color/text_primary" />
+                <TextView android:id="@+id/tvTavilySummary" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/not_set" android:textSize="13sp" android:textColor="@color/text_hint" android:layout_marginEnd="4dp"
+                    android:maxWidth="160dp" android:singleLine="true" android:ellipsize="end" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="›" android:textSize="18sp" android:textColor="@color/text_disabled" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                android:background="@color/divider" android:layout_marginStart="46dp" />
+
             <!-- 鍐呭祵妯″瀷 -->
             <LinearLayout android:id="@+id/cellEmbedding" android:layout_width="match_parent" android:layout_height="56dp"
                 android:orientation="horizontal" android:gravity="center_vertical"

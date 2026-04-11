@@ -240,11 +240,14 @@ openclaw-android-port/
 - [x] 子代理系统 + 进程管理（v1.2.0）
 - [x] 设备控制 API + 权限管理 + 社区规范（v1.3.0）
 - [x] TTS 语音朗读 + 图片/PDF 查看器 + Tavily 设置（v1.4.0）
+- [x] Release 构建（R8 混淆 + 签名 + 资源压缩）
+- [x] APK 体积优化（release 仅 arm64-v8a，33.9 MB → 17.68 MB，↓48%）
+- [x] Debug 双架构支持（+x86_64，模拟器开发）
 
 ### 规划中
-- [ ] Release 构建（R8 混淆 + 签名）
-- [ ] x86_64 架构支持（模拟器）
+- [ ] 消息加密传输
 - [ ] F-Droid 上架
+- [ ] 动态 feature module（按需下载 .so）
 
 ## 📖 文档
 

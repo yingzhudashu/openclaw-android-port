@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.0] - 2026-04-11
+
+APK 体积减半 + Release 构建优化。
+
+### Changed
+- **Release 构建仅打包 `arm64-v8a`**：移除 `x86_64`，Release APK 从 33.9 MB 降至 **17.68 MB**（↓48%）
+- **Debug 构建保留双架构**：`arm64-v8a` + `x86_64`，确保 Android 模拟器开发调试不受影响
+- **R8 代码混淆 + 资源压缩**：`isMinifyEnabled = true` + `isShrinkResources = true` 在 release 中正确启用
+- `versionCode` 6 → 7
+
+### Stats
+- 1 file changed (`build.gradle.kts`)
+- Release APK: 33.9 MB → 17.68 MB
+
+---
+
 ## [1.4.0] - 2026-04-10
 
 TTS 语音朗读、全屏图片查看器、PDF 查看器、Tavily API Key 设置、死代码清理。

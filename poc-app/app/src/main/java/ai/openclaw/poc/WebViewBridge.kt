@@ -191,7 +191,9 @@ class WebViewBridge(private val context: Context) {
      */
     fun stop() {
         running = false
-        try { serverSocket?.close() } catch (_: Exception) {}
+        try { serverSocket?.close() } catch (e: Exception) {
+            log("close serverSocket failed: ${e.message}")
+        }
         mainHandler.post {
             webView?.destroy()
             webView = null
@@ -219,10 +221,11 @@ class WebViewBridge(private val context: Context) {
             // Parse headers
             val headers = mutableMapOf<String, String>()
             var line: String?
-            while (input.readLine().also { line = it } != null && line!!.isNotEmpty()) {
-                val colonIdx = line!!.indexOf(':')
+            while (input.readLine().also { line = it } != null && !line.isNullOrEmpty()) {
+                val l = line ?: break
+                val colonIdx = l.indexOf(':')
                 if (colonIdx > 0) {
-                    headers[line!!.substring(0, colonIdx).trim().lowercase()] = line!!.substring(colonIdx + 1).trim()
+                    headers[l.substring(0, colonIdx).trim().lowercase()] = l.substring(colonIdx + 1).trim()
                 }
             }
 
@@ -437,7 +440,9 @@ class WebViewBridge(private val context: Context) {
 
         } catch (e: Exception) {
             log("Handle error: ${e.message}")
-            try { socket.close() } catch (_: Exception) {}
+            try { socket.close() } catch (e2: Exception) {
+                log("close client socket failed: ${e2.message}")
+            }
         }
     }
 

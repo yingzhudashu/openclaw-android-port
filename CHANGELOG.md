@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6.0] - 2026-04-11
+
+代码架构重构 + SSE 流式客户端 + Markdown 渲染。
+
+### Added
+
+#### GatewayApi.kt — 集中式 HTTP 客户端
+- 新建 `GatewayApi.kt` 统一管理所有 Gateway 通信
+- 提供 GET/POST/PUT/DELETE 基础方法 + JSON 便捷封装
+- 封装 15+ 业务方法：`getConfig()`、`updateModel()`、`updateProvider()`、`deleteProvider()`、
+  `getFileContent()`、`saveFileContent()`、`getSkills()`、`getSkillDetail()`、`installSkill()`、
+  `updateSkill()`、`deleteSkill()`、`getEmbeddingConfig()`、`saveEmbeddingConfig()`、
+  `addEmbeddingProvider()`、`deleteEmbeddingProvider()`、`updateTavilyKey()`、
+  `updateMaxSteps()`、`updateMemoryMode()`
+- 统一错误处理：HTTP 非 2xx 自动抛异常，调用方无需检查 status code
+
+#### GatewayClient.kt — SSE 流式通信
+- 新建 `GatewayClient.kt` 实现 Server-Sent Events 流式读取
+- 支持 chunk-by-chunk 实时回调，用于 AI 消息流式输出
+- 替代原 `ChatFragment` 中的原始 `HttpURLConnection` 流式逻辑
+
+#### MarkdownRenderer.kt — Markdown 渲染
+- 新建 `MarkdownRenderer.kt` 实现 Markdown → Spanned 转换
+- 支持标题、粗体、斜体、代码块、列表、链接
+- 替代原 `MessageAdapter` 中的简易文本渲染
+
+### Changed
+
+#### SettingsFragment.kt 大幅瘦身
+- 删除 50+ 行重复的 `httpGet()`/`httpPost()`/`httpPut()`/`httpDelete()` 方法
+- 所有 API 调用统一改为 `GatewayApi.xxx()` 调用
+- 异常处理从 `catch (_: Exception) {}` 改为 `catch (e: Exception) { Log.w(TAG, ...) }`
+- 新增 `defaultBaseUrls` 映射表（5 个供应商预设 URL）
+- 新增 `siliconflow` 到默认供应商列表
+- 更新默认模型列表：新增 qwen3.6-plus、kimi-k2.5、MiniMax-M2.5
+
+### Stats
+- 3 个新 Kotlin 文件（GatewayApi、GatewayClient、MarkdownRenderer）
+- SettingsFragment.kt 净减 50+ 行
+- 19 个文件变更，+1898/-1085 行
+
+---
+
 ## [1.5.0] - 2026-04-11
 
 APK 体积减半 + Release 构建优化。

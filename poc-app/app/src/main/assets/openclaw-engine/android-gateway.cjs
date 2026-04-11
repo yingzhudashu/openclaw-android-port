@@ -161,8 +161,8 @@ const DEFAULT_CONFIG = {
   providers: {
     bailian: {
       api_key: '',
-      base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      models: ['qwen3.5-plus'],
+      base_url: 'https://coding.dashscope.aliyuncs.com/v1',
+      models: ['qwen3.5-plus', 'qwen3.6-plus', 'qwen3-max', 'qwen3-coder-plus'],
     },
     openai: {
       api_key: '',
@@ -179,6 +179,11 @@ const DEFAULT_CONFIG = {
       base_url: 'https://api.deepseek.com/v1',
       models: ['deepseek-chat'],
     },
+    siliconflow: {
+      api_key: '',
+      base_url: 'https://api.siliconflow.cn/v1',
+      models: ['qwen3.5-plus', 'BAAI/bge-m3'],
+    },
   },
   embedding: {
     provider: '',
@@ -188,19 +193,23 @@ const DEFAULT_CONFIG = {
   },
   embedding_providers: {
     bailian: {
-      base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      models: ['text-embedding-v3'],
+      base_url: '',
+      models: ['text-embedding-v3', 'text-embedding-v2'],
     },
     openai: {
-      base_url: 'https://api.openai.com/v1',
-      models: ['text-embedding-3-small'],
+      base_url: '',
+      models: ['text-embedding-3-small', 'text-embedding-3-large'],
     },
     siliconflow: {
-      base_url: 'https://api.siliconflow.cn/v1',
+      base_url: '',
       models: ['BAAI/bge-m3'],
     },
+    deepseek: {
+      base_url: '',
+      models: ['deepseek-embedding'],
+    },
   },
-  available_models: ['qwen3.5-plus', 'gpt-4o', 'claude-sonnet-4-6', 'deepseek-chat'],
+  available_models: ['qwen3.5-plus', 'qwen3.6-plus', 'gpt-4o', 'claude-sonnet-4-6', 'deepseek-chat', 'MiniMax-M2.5'],
   tavily: {
     api_key: '',
   },

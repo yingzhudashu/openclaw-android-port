@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/yingzhudashu/openclaw-android-port?label=version)](https://github.com/yingzhudashu/openclaw-android-port/releases)
+[![Latest Release](https://img.shields.io/badge/latest-v1.6.0-blue)](https://github.com/yingzhudashu/openclaw-android-port/releases)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-green.svg)](https://developer.android.com)
 [![Architecture](https://img.shields.io/badge/Arch-arm64--v8a-blue.svg)]()
 
@@ -244,6 +245,7 @@ openclaw-android-port/
 - [x] APK 体积优化（release 仅 arm64-v8a，33.9 MB → 17.68 MB，↓48%）
 - [x] Debug 双架构支持（+x86_64，模拟器开发）
 - [x] 5 供应商 + 模型 Fallback（主失败自动切备用）
+- [x] 代码架构重构：GatewayApi 集中式客户端 + SSE 流式 + Markdown 渲染（v1.6.0）
 
 ### 规划中
 - [ ] FCM 推送通知（桌面新消息推送到手机）

@@ -106,3 +106,13 @@ release/
 # Local test / temp scripts
 test_v*.ps1
 TEST_REPORT*.md
+
+# Temporary ADB dumps & debug artifacts
+dump*.xml
+ui_test.xml
+debug_screenshot.png
+run-automated-tests.ps1
+run-tests.ps1
+
+# Local dev skills (managed externally)
+.skills/

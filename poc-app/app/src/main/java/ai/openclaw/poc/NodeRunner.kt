@@ -233,7 +233,9 @@ class NodeRunner(private val context: Context) {
                 log("Restored user config after engine update")
             } catch (e: Exception) {
                 log("Failed to merge config: ${e.message}, restoring as-is")
-                try { configFile.writeText(savedConfig) } catch (_: Exception) {}
+                try { configFile.writeText(savedConfig) } catch (e2: Exception) {
+                    log("Config fallback also failed: ${e2.message}")
+                }
             }
         }
 

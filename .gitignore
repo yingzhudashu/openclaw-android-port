@@ -43,3 +43,11 @@ poc-app/app/src/main/jniLibs/*/include/
 
 # Node.js binaries (download from Node.js releases)
 package/android/libnode/bin/
+
+# Temporary ADB dumps & debug artifacts
+dump*.xml
+ui_test.xml
+debug_screenshot.png
+run-automated-tests.ps1
+run-tests.ps1
+test_v*.ps1

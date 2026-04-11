@@ -4,13 +4,17 @@
   "providers": {
     "bailian": {
       "api_key": "",
-      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "base_url": "https://coding.dashscope.aliyuncs.com/v1",
       "models": [
         "qwen3.5-plus",
+        "qwen3.6-plus",
+        "qwen3-max",
+        "qwen3-coder-plus",
         "qwen-plus",
         "qwen-turbo",
-        "qwen-max",
-        "qwen-long"
+        "qwen-long",
+        "kimi-k2.5",
+        "MiniMax-M2.5"
       ]
     },
     "anthropic": {

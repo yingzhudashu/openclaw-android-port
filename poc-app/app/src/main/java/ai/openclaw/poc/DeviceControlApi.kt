@@ -66,7 +66,9 @@ class DeviceControlApi(private val context: Context) {
 
     fun stop() {
         running = false
-        try { serverSocket?.close() } catch (_: Exception) {}
+        try { serverSocket?.close() } catch (e: Exception) {
+            Log.w(TAG, "close serverSocket failed", e)
+        }
         Log.d(TAG, "DeviceControlApi stopped")
     }
 
@@ -103,7 +105,9 @@ class DeviceControlApi(private val context: Context) {
             socket.close()
         } catch (e: Exception) {
             Log.w(TAG, "Handle error: ${e.message}")
-            try { socket.close() } catch (_: Exception) {}
+            try { socket.close() } catch (e: Exception) {
+                Log.w(TAG, "close client socket failed", e)
+            }
         }
     }
 

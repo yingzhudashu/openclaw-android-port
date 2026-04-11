@@ -1,14 +1,22 @@
 package ai.openclaw.poc
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Typeface
+import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.*
 import android.text.method.LinkMovementMethod
-import android.text.TextPaint
+import android.text.style.BackgroundColorSpan
+import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.text.style.TypefaceSpan
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
@@ -17,15 +25,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.speech.tts.TextToSpeech
-import java.util.Locale as JavaLocale
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
+import org.json.JSONArray
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,39 +43,85 @@ data class ChatMessage(
     val isUser: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
     val model: String = "",
-    val imageBase64: String? = null,        // 缩略图（显示用）
-    val originalImageBase64: String? = null, // 原图（点击放大用）
+    val imageBase64: String? = null,
+    val originalImageBase64: String? = null,
     val fileName: String? = null,
     val fileSize: Long = 0,
     val toolLog: String? = null,
     val steps: Int = 0,
     val sessionId: String? = null,
     val sendFailed: Boolean = false,
-    // Fix #7/#8: Snapshot of pending state for retry restoration
     val retryFileContent: String? = null,
     val retryOriginalImageBase64: String? = null
 )
 
 /**
  * 消息列表 RecyclerView 适配器
- * 
- * 支持：Markdown 渲染、图片、文件附件、工具调用折叠
+ *
+ * v1.6.0 优化：
+ * - 使用 MarkdownRenderer 替代内联渲染
+ * - 新增 streaming 更新（不触发 full rebind）
+ * - 简化 bind 逻辑，抽取辅助方法
  */
 class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     private val messages = mutableListOf<ChatMessage>()
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    private val expandedToolLogs = mutableSetOf<Int>() // Track expanded tool logs
+    private val expandedToolLogs = mutableSetOf<Int>()
+    private var searchQuery: String = ""
+
+    // Callbacks
     var onRetryClick: ((Int, ChatMessage) -> Unit)? = null
-    var onTtsClick: ((String, Int) -> Unit)? = null  // TTS朗读回调 (text, position)
-    var isTtsSpeaking = false  // 跟踪 TTS 状态
-    var speakingPosition = -1  // 正在朗读的消息位置
+    var onTtsClick: ((String, Int) -> Unit)? = null
+    var isTtsSpeaking = false
+    var speakingPosition = -1
+
+    // v1.6.0: 流式更新优化 — 直接更新 TextView 而不重新 bind 整个 ViewHolder
+    @Volatile private var streamingViewHolder: MessageViewHolder? = null
 
     fun addMessage(message: ChatMessage) {
         val pos = messages.size
         messages.add(message)
         notifyItemInserted(pos)
     }
+
+    // ─── v1.6.0 Streaming Update ─────────────────────────────────────────
+
+    /**
+     * 流式更新最后一条 AI 消息 — 直接更新 TextView，不触发 notifyItemChanged
+     * 
+     * 性能优化：SSE 每个 chunk 都调用此方法，避免全量 Markdown 解析 + ViewHolder 重绘
+     * 使用 lite 渲染（仅加粗/行内代码，无 ClickableSpan）
+     */
+    fun updateLastAiMessageStreaming(content: String) {
+        for (i in messages.indices.reversed()) {
+            if (!messages[i].isUser) {
+                messages[i] = messages[i].copy(content = content)
+                // 直接更新 ViewHolder 的 TextView，不 notify
+                val holder = streamingViewHolder
+                if (holder != null && holder.bindingAdapterPosition == i) {
+                    holder.updateStreamingContent(content)
+                }
+                return
+            }
+        }
+    }
+
+    /**
+     * 标记流式结束 — 通知 ViewHolder 进行完整渲染
+     */
+    fun finishStreaming() {
+        val holder = streamingViewHolder
+        if (holder != null) {
+            val pos = holder.bindingAdapterPosition
+            if (pos >= 0 && pos < messages.size) {
+                notifyItemChanged(pos)
+            }
+        }
+        streamingViewHolder = null
+    }
+
+    // ─── Standard Updates ────────────────────────────────────────────────
 
     fun updateLastAiMessage(content: String) {
         for (i in messages.indices.reversed()) {
@@ -104,35 +154,17 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         val size = messages.size
         messages.clear()
         expandedToolLogs.clear()
+        streamingViewHolder = null
         notifyItemRangeRemoved(0, size)
     }
 
-    private var searchQuery: String = ""
-
     fun highlightSearch(query: String): Int {
         searchQuery = query.lowercase()
-        val count = messages.size // Cache size before iteration
         notifyDataSetChanged()
-        // Return first matching position
         for (i in messages.indices.reversed()) {
             if (messages[i].content.lowercase().contains(searchQuery)) return i
         }
         return -1
-    }
-
-    private fun highlightMatches(ssb: SpannableStringBuilder, text: String, query: String) {
-        val lower = text.lowercase()
-        var start = 0
-        while (true) {
-            val idx = lower.indexOf(query, start)
-            if (idx < 0) break
-            ssb.setSpan(
-                BackgroundColorSpan(0x60FFEB3B),  // Semi-transparent yellow
-                idx, idx + query.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            start = idx + query.length
-        }
     }
 
     fun clearHighlight() {
@@ -142,10 +174,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
 
     fun getMessageCount(): Int = messages.size
     fun getAllMessages(): List<ChatMessage> = messages.toList()
-
-    fun getMessageAt(position: Int): ChatMessage? {
-        return messages.getOrNull(position)
-    }
+    fun getMessageAt(position: Int): ChatMessage? = messages.getOrNull(position)
 
     fun removeMessageAt(position: Int) {
         if (position in messages.indices) {
@@ -171,14 +200,19 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
     }
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
+        // 记录最后一个 AI ViewHolder 用于流式更新
+        if (!messages[position].isUser && holder.bindingAdapterPosition == position) {
+            streamingViewHolder = holder
+        }
         holder.bind(messages[position], position)
     }
 
     override fun getItemCount(): Int = messages.size
 
+    // ─── ViewHolder ──────────────────────────────────────────────────────
+
     inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val tvDateSeparator: TextView = itemView.findViewById(R.id.tvDateSeparator)
-        // 用户消息
+        // User views
         private val layoutUser: View = itemView.findViewById(R.id.layoutUser)
         private val tvUserMessage: TextView = itemView.findViewById(R.id.tvUserMessage)
         private val tvUserTime: TextView = itemView.findViewById(R.id.tvUserTime)
@@ -190,8 +224,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val tvUserFileName: TextView = itemView.findViewById(R.id.tvUserFileName)
         private val tvUserFileSize: TextView = itemView.findViewById(R.id.tvUserFileSize)
         private val tvFileIcon: TextView = itemView.findViewById(R.id.tvFileIcon)
+        private val tvDateSeparator: TextView = itemView.findViewById(R.id.tvDateSeparator)
 
-        // AI 消息
+        // AI views
         private val layoutAi: View = itemView.findViewById(R.id.layoutAi)
         private val tvAiLabel: TextView = itemView.findViewById(R.id.tvAiLabel)
         private val tvAiMessage: TextView = itemView.findViewById(R.id.tvAiMessage)
@@ -205,481 +240,250 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val cardAvatar: View = itemView.findViewById(R.id.cardAvatar)
         private val tvAvatarEmoji: TextView = itemView.findViewById(R.id.tvAvatarEmoji)
 
+        // v1.6.0: 流式内容缓存
+        private var lastStreamingContent: String? = null
+
+        /**
+         * v1.6.0: 流式更新 — 直接设置 TextView 文本，不做 Markdown 解析
+         */
+        fun updateStreamingContent(content: String) {
+            if (content == lastStreamingContent) return
+            lastStreamingContent = content
+            // 使用 lite 渲染：仅加粗/行内代码，跳过 ClickableSpan（性能关键路径）
+            tvAiMessage.text = MarkdownRenderer.renderLite(content, markdownConfig)
+            tvAiMessage.movementMethod = LinkMovementMethod.getInstance()
+        }
+
         fun bind(message: ChatMessage, position: Int) {
-            // Date separator
+            bindDateSeparator(message, position)
+            val timeStr = timeFormat.format(Date(message.timestamp))
+
+            if (message.isUser) {
+                bindUserMessage(message, timeStr, position)
+            } else {
+                bindAiMessage(message, timeStr, position)
+            }
+        }
+
+        private fun bindDateSeparator(message: ChatMessage, position: Int) {
             val showDate = if (position == 0) true else {
                 val prev = messages[position - 1]
-                val prevDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(prev.timestamp))
-                val curDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
+                val prevDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    .format(java.util.Date(prev.timestamp))
+                val curDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    .format(java.util.Date(message.timestamp))
                 prevDate != curDate
             }
             if (showDate && message.timestamp > 0) {
                 tvDateSeparator.visibility = View.VISIBLE
-                val now = System.currentTimeMillis()
-                val diff = now - message.timestamp
+                val diff = System.currentTimeMillis() - message.timestamp
                 tvDateSeparator.text = when {
                     diff < 86400000L -> itemView.context.getString(R.string.date_today)
                     diff < 172800000L -> itemView.context.getString(R.string.date_yesterday)
-                    else -> java.text.SimpleDateFormat("MM月dd日", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
+                    else -> java.text.SimpleDateFormat("MM月dd日", java.util.Locale.getDefault())
+                        .format(java.util.Date(message.timestamp))
                 }
             } else {
                 tvDateSeparator.visibility = View.GONE
             }
-            val timeStr = timeFormat.format(Date(message.timestamp))
+        }
 
-            if (message.isUser) {
-                layoutUser.visibility = View.VISIBLE
-                layoutAi.visibility = View.GONE
-                tvUserMessage.text = message.content
-                // Search highlight for user messages
-                if (searchQuery.isNotEmpty() && message.content.lowercase().contains(searchQuery)) {
-                    val ssb = SpannableStringBuilder(message.content)
-                    highlightMatches(ssb, message.content, searchQuery)
-                    tvUserMessage.text = ssb
-                }
-                tvUserTime.text = timeStr
+        private fun bindUserMessage(message: ChatMessage, timeStr: String, position: Int) {
+            layoutUser.visibility = View.VISIBLE
+            layoutAi.visibility = View.GONE
+            tvUserTime.text = timeStr
 
-                // 图片（微信风格：圆角卡片，点击看原图）
-                if (message.imageBase64 != null) {
-                    try {
-                        val bytes = Base64.decode(message.imageBase64, Base64.DEFAULT)
-                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        ivUserImage.setImageBitmap(bitmap)
-                        cardUserImage.visibility = View.VISIBLE
-                        cardUserImage.setOnClickListener {
-                            showFullImage(itemView.context, message.originalImageBase64 ?: message.imageBase64)
-                        }
-                    } catch (_: Exception) {
-                        cardUserImage.visibility = View.GONE
-                    }
-                } else {
-                    cardUserImage.visibility = View.GONE
-                }
-
-                // 文件（微信风格：白底卡片 + 图标 + 文件名 + 大小）
-                if (message.fileName != null) {
-                    tvUserFileName.text = message.fileName
-                    tvUserFileSize.text = if (message.fileSize > 0) formatFileSize(message.fileSize) else ""
-                    // 根据文件类型设置图标
-                    tvFileIcon.text = when {
-                        message.fileName.endsWith(".pdf") -> "📄"
-                        message.fileName.endsWith(".doc") || message.fileName.endsWith(".docx") -> "🗒️"
-                        message.fileName.endsWith(".xls") || message.fileName.endsWith(".xlsx") -> "📊"
-                        message.fileName.endsWith(".txt") || message.fileName.endsWith(".md") -> "📝"
-                        message.fileName.endsWith(".json") -> "💾"
-                        else -> "📄"
-                    }
-                    cardUserFile.visibility = View.VISIBLE
-                    cardUserFile.setOnClickListener {
-                        openCachedFile(itemView.context, message.fileName)
-                    }
-                    // 文件消息不显示文本气泡
-                    if (message.content.startsWith("📄 ") || message.content.isEmpty()) {
-                        cardUser.visibility = View.GONE
-                    } else {
-                        cardUser.visibility = View.VISIBLE
-                    }
-                } else {
-                    cardUserFile.visibility = View.GONE
-                    cardUser.visibility = View.VISIBLE
-                }
-
-                // 图片消息不显示文本气泡
-                if (message.imageBase64 != null && (message.content == itemView.context.getString(R.string.chat_image_label) || message.content.isEmpty())) {
-                    cardUser.visibility = View.GONE
-                }
-
-                // Retry hint for failed messages
-                if (message.sendFailed) {
-                    tvRetryHint.visibility = View.VISIBLE
-                    tvRetryHint.setOnClickListener { onRetryClick?.invoke(position, message) }
-                } else {
-                    tvRetryHint.visibility = View.GONE
-                    tvRetryHint.setOnClickListener(null)
-                }
-
-                // 长按复制
-                itemView.setOnLongClickListener {
-                    copyToClipboard(itemView.context, message.content)
-                    true
-                }
-
+            // Search highlight
+            if (searchQuery.isNotEmpty() && message.content.lowercase().contains(searchQuery)) {
+                tvUserMessage.text = MarkdownRenderer.highlightSearch(message.content, searchQuery)
             } else {
-                layoutUser.visibility = View.GONE
-                layoutAi.visibility = View.VISIBLE
+                tvUserMessage.text = message.content
+            }
 
-                // Markdown 渲染
-                tvAiMessage.text = renderMarkdown(itemView.context, message.content)
-                tvAiMessage.movementMethod = LinkMovementMethod.getInstance()
-                tvAiTime.text = timeStr
-
-                // AI 名字和头像（每个会话独立）
-                val prefs = itemView.context.getSharedPreferences("openclaw_prefs", 0)
-                val sessionId = message.sessionId ?: ""
-                val botName = if (sessionId.isNotEmpty()) {
-                    prefs.getString("bot_name_$sessionId", null)
-                        ?: prefs.getString("bot_name", "OpenClaw") ?: "OpenClaw"
-                } else {
-                    prefs.getString("bot_name", "OpenClaw") ?: "OpenClaw"
-                }
-                val botEmoji = if (sessionId.isNotEmpty()) {
-                    prefs.getString("bot_emoji_$sessionId", null)
-                        ?: prefs.getString("bot_emoji", "🦞") ?: "🦞"
-                } else {
-                    prefs.getString("bot_emoji", "🦞") ?: "🦞"
-                }
-                tvAiLabel.text = botName
-                tvAvatarEmoji.text = botEmoji
-
-                // 点击头像修改名称和头像（per-session）
-                cardAvatar.setOnClickListener {
-                    showEditBotDialog(itemView.context, sessionId)
-                }
-
-                // 模型标注（气泡底部小字）
-                if (message.model.isNotEmpty()) {
-                    tvModelTag.text = message.model
-                    tvModelTag.visibility = View.VISIBLE
-                } else {
-                    tvModelTag.visibility = View.GONE
-                }
-
-                // TTS 朗读按钮（有文本内容时显示）
-                val hasText = message.content.isNotBlank() && !message.content.startsWith("📄 ")
-                if (hasText) {
-                    btnTts.visibility = View.VISIBLE
-                    // 正在朗读此消息时高亮
-                    val isThisSpeaking = isTtsSpeaking && position == speakingPosition
-                    btnTts.setImageResource(
-                        if (isThisSpeaking) android.R.drawable.ic_media_pause
-                        else android.R.drawable.ic_lock_silent_mode_off
-                    )
-                    btnTts.setOnClickListener {
-                        onTtsClick?.invoke(message.content, position)
+            // Image
+            if (message.imageBase64 != null) {
+                decodeAndShowImage(message.imageBase64, ivUserImage) { bmp ->
+                    cardUserImage.visibility = View.VISIBLE
+                    cardUserImage.setOnClickListener {
+                        showFullImage(itemView.context, message.originalImageBase64 ?: message.imageBase64)
                     }
+                } ?: run { cardUserImage.visibility = View.GONE }
+            } else {
+                cardUserImage.visibility = View.GONE
+            }
+
+            // File
+            if (message.fileName != null) {
+                tvUserFileName.text = message.fileName
+                tvUserFileSize.text = if (message.fileSize > 0) formatFileSize(message.fileSize) else ""
+                tvFileIcon.text = getFileEmoji(message.fileName)
+                cardUserFile.visibility = View.VISIBLE
+                cardUserFile.setOnClickListener { openCachedFile(itemView.context, message.fileName) }
+                cardUser.visibility = if (message.content.startsWith("📄 ") || message.content.isEmpty()) View.GONE else View.VISIBLE
+            } else {
+                cardUserFile.visibility = View.GONE
+                cardUser.visibility = View.VISIBLE
+            }
+
+            // Hide text bubble for image-only messages
+            if (message.imageBase64 != null &&
+                (message.content == itemView.context.getString(R.string.chat_image_label) || message.content.isEmpty())) {
+                cardUser.visibility = View.GONE
+            }
+
+            // Retry
+            if (message.sendFailed) {
+                tvRetryHint.visibility = View.VISIBLE
+                tvRetryHint.setOnClickListener { onRetryClick?.invoke(position, message) }
+            } else {
+                tvRetryHint.visibility = View.GONE
+                tvRetryHint.setOnClickListener(null)
+            }
+
+            itemView.setOnLongClickListener {
+                copyToClipboard(itemView.context, message.content)
+                true
+            }
+        }
+
+        private fun bindAiMessage(message: ChatMessage, timeStr: String, position: Int) {
+            layoutUser.visibility = View.GONE
+            layoutAi.visibility = View.VISIBLE
+            tvAiTime.text = timeStr
+            lastStreamingContent = null // 重置流式缓存
+
+            // Markdown 渲染（完整版本）
+            tvAiMessage.text = MarkdownRenderer.render(itemView.context, message.content)
+            tvAiMessage.movementMethod = LinkMovementMethod.getInstance()
+
+            // Bot name + emoji
+            val prefs = itemView.context.getSharedPreferences("openclaw_prefs", 0)
+            val sid = message.sessionId ?: ""
+            val botName = prefs.getString(if (sid.isNotEmpty()) "bot_name_$sid" else "bot_name", null)
+                ?: prefs.getString("bot_name", "OpenClaw") ?: "OpenClaw"
+            val botEmoji = prefs.getString(if (sid.isNotEmpty()) "bot_emoji_$sid" else "bot_emoji", null)
+                ?: prefs.getString("bot_emoji", "🦞") ?: "🦞"
+            tvAiLabel.text = botName
+            tvAvatarEmoji.text = botEmoji
+            cardAvatar.setOnClickListener { showEditBotDialog(itemView.context, sid) }
+
+            // Model tag
+            if (message.model.isNotEmpty()) {
+                tvModelTag.text = message.model
+                tvModelTag.visibility = View.VISIBLE
+            } else {
+                tvModelTag.visibility = View.GONE
+            }
+
+            // TTS
+            val hasText = message.content.isNotBlank() && !message.content.startsWith("📄 ")
+            if (hasText) {
+                btnTts.visibility = View.VISIBLE
+                val isThisSpeaking = isTtsSpeaking && position == speakingPosition
+                btnTts.setImageResource(
+                    if (isThisSpeaking) android.R.drawable.ic_media_pause
+                    else android.R.drawable.ic_lock_silent_mode_off
+                )
+                btnTts.setOnClickListener { onTtsClick?.invoke(message.content, position) }
+            } else {
+                btnTts.visibility = View.GONE
+                btnTts.setOnClickListener(null)
+            }
+
+            // AI Image
+            if (message.imageBase64 != null) {
+                decodeAndShowImage(message.imageBase64, ivAiImage) {
+                    ivAiImage.visibility = View.VISIBLE
+                    ivAiImage.setOnClickListener { showFullImage(itemView.context, message.imageBase64) }
+                } ?: run { ivAiImage.visibility = View.GONE }
+            } else {
+                ivAiImage.visibility = View.GONE
+            }
+
+            // Tool log
+            bindToolLog(message, position)
+
+            // Long press
+            tvAiMessage.setOnLongClickListener {
+                copyToClipboard(itemView.context, message.content)
+                true
+            }
+        }
+
+        private fun bindToolLog(message: ChatMessage, position: Int) {
+            if (message.toolLog.isNullOrEmpty() || message.toolLog == "[]") {
+                layoutToolLog.visibility = View.GONE
+                return
+            }
+
+            layoutToolLog.visibility = View.VISIBLE
+            val logArr = try { JSONArray(message.toolLog) } catch (_: Exception) { null }
+            if (logArr == null) {
+                layoutToolLog.visibility = View.GONE
+                return
+            }
+
+            val toolCount = logArr.length()
+            val skillCount = (0 until toolCount).count {
+                logArr.optJSONObject(it)?.optString("category") == "skill"
+            }
+            val coreCount = toolCount - skillCount
+
+            tvToolSummary.text = when {
+                skillCount > 0 && coreCount > 0 -> "🔧 $coreCount + 📦 $skillCount | ${message.steps} steps"
+                skillCount > 0 -> "📦 $skillCount skill calls | ${message.steps} steps"
+                else -> itemView.context.getString(R.string.tool_calls_count, toolCount, message.steps)
+            }
+
+            tvToolDetail.text = buildToolDetail(message.toolLog)
+            val isExpanded = expandedToolLogs.contains(position)
+            tvToolDetail.visibility = if (isExpanded) View.VISIBLE else View.GONE
+
+            layoutToolLog.setOnClickListener {
+                if (expandedToolLogs.contains(position)) {
+                    expandedToolLogs.remove(position)
+                    tvToolDetail.visibility = View.GONE
                 } else {
-                    btnTts.visibility = View.GONE
-                    btnTts.setOnClickListener(null)
-                }
-
-                // AI 图片（点击放大）
-                if (message.imageBase64 != null) {
-                    try {
-                        val bytes = Base64.decode(message.imageBase64, Base64.DEFAULT)
-                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        ivAiImage.setImageBitmap(bitmap)
-                        ivAiImage.visibility = View.VISIBLE
-                        ivAiImage.setOnClickListener {
-                            showFullImage(itemView.context, message.imageBase64)
-                        }
-                    } catch (_: Exception) {
-                        ivAiImage.visibility = View.GONE
-                    }
-                } else {
-                    ivAiImage.visibility = View.GONE
-                }
-
-                // 工具调用日志
-                if (message.toolLog != null && message.toolLog.isNotEmpty() && message.toolLog != "[]") {
-                    layoutToolLog.visibility = View.VISIBLE
-                    val toolCount = try {
-                        val logArr = org.json.JSONArray(message.toolLog)
-                        logArr.length()
-                    } catch (_: Exception) { 0 }
-                    val skillCount = try {
-                        val logArr = org.json.JSONArray(message.toolLog)
-                        (0 until logArr.length()).count { logArr.optJSONObject(it)?.optString("category") == "skill" }
-                    } catch (_: Exception) { 0 }
-                    val coreCount = toolCount - skillCount
-
-                    tvToolSummary.text = if (skillCount > 0 && coreCount > 0) {
-                        "🔧 $coreCount + 📦 $skillCount | ${message.steps} steps"
-                    } else if (skillCount > 0) {
-                        "📦 $skillCount skill calls | ${message.steps} steps"
-                    } else {
-                        itemView.context.getString(R.string.tool_calls_count, toolCount, message.steps)
-                    }
-
-                    // 构建详情
-                    val detail = buildToolDetail(message.toolLog)
-                    tvToolDetail.text = detail
-
-                    val isExpanded = expandedToolLogs.contains(position)
-                    tvToolDetail.visibility = if (isExpanded) View.VISIBLE else View.GONE
-
-                    layoutToolLog.setOnClickListener {
-                        if (expandedToolLogs.contains(position)) {
-                            expandedToolLogs.remove(position)
-                            tvToolDetail.visibility = View.GONE
-                        } else {
-                            expandedToolLogs.add(position)
-                            tvToolDetail.visibility = View.VISIBLE
-                        }
-                    }
-                } else {
-                    layoutToolLog.visibility = View.GONE
-                }
-
-                // 长按复制
-                tvAiMessage.setOnLongClickListener {
-                    copyToClipboard(itemView.context, message.content)
-                    true
+                    expandedToolLogs.add(position)
+                    tvToolDetail.visibility = View.VISIBLE
                 }
             }
         }
+
+        // Lazy-loaded config (avoids allocation on every bind)
+        private val markdownConfig by lazy { MarkdownRenderer.defaultConfig(itemView.context) }
     }
 
-    // ─── Markdown 渲染 ───────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────
 
-    private fun renderMarkdown(context: Context, text: String): CharSequence {
-        val trimmed = text.trimStart('\n', '\r').trimEnd()
-        if (trimmed.isEmpty()) return trimmed
-
-        val ssb = SpannableStringBuilder()
-        val lines = trimmed.split("\n")
-        val codeBlockBg = ContextCompat.getColor(context, R.color.code_block_bg)
-        val codeBlockText = ContextCompat.getColor(context, R.color.code_block_text)
-        val inlineCodeBg = ContextCompat.getColor(context, R.color.code_bg)
-        val inlineCodeText = ContextCompat.getColor(context, R.color.code_text)
-        val linkColor = ContextCompat.getColor(context, R.color.md_theme_primary)
-
-        var inCodeBlock = false
-        val codeBlockContent = StringBuilder()
-
-        for ((idx, line) in lines.withIndex()) {
-            // Code block toggle
-            if (line.trimStart().startsWith("```")) {
-                if (inCodeBlock) {
-                    // End code block
-                    inCodeBlock = false
-                    val codeContent = codeBlockContent.toString().trimEnd()
-                    val start = ssb.length
-                    ssb.append(codeContent)
-                    val end = ssb.length
-                    ssb.setSpan(BackgroundColorSpan(codeBlockBg), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    ssb.setSpan(ForegroundColorSpan(codeBlockText), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    ssb.setSpan(TypefaceSpan("monospace"), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    ssb.setSpan(RelativeSizeSpan(0.88f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    codeBlockContent.clear()
-                    ssb.append("\n")
-                    // 复制按钮
-                    val copyStart = ssb.length
-                    ssb.append("[${context.getString(R.string.copy_code)}]")
-                    val copyEnd = ssb.length
-                    ssb.setSpan(object : ClickableSpan() {
-                        override fun onClick(widget: View) {
-                            copyToClipboard(context, codeContent)
-                        }
-                        override fun updateDrawState(ds: TextPaint) {
-                            super.updateDrawState(ds)
-                            ds.color = ContextCompat.getColor(context, R.color.md_theme_primary)
-                            ds.isUnderlineText = true
-                        }
-                    }, copyStart, copyEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                } else {
-                    // Start code block
-                    inCodeBlock = true
-                    codeBlockContent.clear()
-                }
-                continue
-            }
-
-            if (inCodeBlock) {
-                codeBlockContent.append(line).append("\n")
-                continue
-            }
-
-            // Headers
-            if (line.startsWith("### ")) {
-                val start = ssb.length
-                ssb.append(line.substring(4))
-                ssb.setSpan(StyleSpan(Typeface.BOLD), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.setSpan(RelativeSizeSpan(1.05f), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.append("\n")
-                continue
-            }
-            if (line.startsWith("## ")) {
-                val start = ssb.length
-                ssb.append(line.substring(3))
-                ssb.setSpan(StyleSpan(Typeface.BOLD), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.setSpan(RelativeSizeSpan(1.1f), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.append("\n")
-                continue
-            }
-            if (line.startsWith("# ")) {
-                val start = ssb.length
-                ssb.append(line.substring(2))
-                ssb.setSpan(StyleSpan(Typeface.BOLD), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.setSpan(RelativeSizeSpan(1.15f), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                ssb.append("\n")
-                continue
-            }
-
-            // Bullet list
-            val trimmed = line.trimStart()
-            if (trimmed.startsWith("- ") || trimmed.startsWith("• ") || trimmed.startsWith("* ")) {
-                ssb.append("  • ")
-                renderInline(ssb, trimmed.substring(2), inlineCodeBg, inlineCodeText, linkColor)
-                ssb.append("\n")
-                continue
-            }
-
-            // Numbered list
-            val numMatch = Regex("^(\\d+)[.)\\s]\\s*(.*)").find(trimmed)
-            if (numMatch != null) {
-                ssb.append("  ${numMatch.groupValues[1]}. ")
-                renderInline(ssb, numMatch.groupValues[2], inlineCodeBg, inlineCodeText, linkColor)
-                ssb.append("\n")
-                continue
-            }
-
-            // Normal line with inline formatting
-            renderInline(ssb, line, inlineCodeBg, inlineCodeText, linkColor)
-            ssb.append("\n")
-        }
-
-        // Handle unclosed code block
-        if (inCodeBlock && codeBlockContent.isNotEmpty()) {
-            val codeContent = codeBlockContent.toString().trimEnd()
-            val start = ssb.length
-            ssb.append(codeContent)
-            val end = ssb.length
-            ssb.setSpan(BackgroundColorSpan(codeBlockBg), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            ssb.setSpan(TypefaceSpan("monospace"), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            ssb.append("\n")
-            // 复制按钮（未闭合代码块）
-            val copyStart = ssb.length
-            ssb.append("[${context.getString(R.string.copy_code)}]")
-            val copyEnd = ssb.length
-            ssb.setSpan(object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    copyToClipboard(context, codeContent)
-                }
-                override fun updateDrawState(ds: TextPaint) {
-                    super.updateDrawState(ds)
-                    ds.color = ContextCompat.getColor(context, R.color.md_theme_primary)
-                    ds.isUnderlineText = true
-                }
-            }, copyStart, copyEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            ssb.append("\n")
-        }
-
-        // Trim trailing newlines
-        while (ssb.isNotEmpty() && ssb[ssb.length - 1] == '\n') {
-            ssb.delete(ssb.length - 1, ssb.length)
-        }
-
-        return ssb
+    private fun decodeAndShowImage(base64: String, imageView: ImageView, onSuccess: (Bitmap) -> Unit): Bitmap? {
+        return try {
+            val bytes = Base64.decode(base64, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            imageView.setImageBitmap(bitmap)
+            onSuccess(bitmap)
+            bitmap
+        } catch (_: Exception) { null }
     }
 
-    /**
-     * 渲染行内格式：**加粗**、`代码`、_斜体_、[链接](url)
-     */
-    private fun renderInline(ssb: SpannableStringBuilder, text: String, codeBg: Int, codeText: Int, linkColor: Int) {
-        if (text.isEmpty()) return
-        var i = 0
-        val len = text.length // cache length for performance
-        while (i < len) {
-            when {
-                // 加粗 **text**
-                i + 1 < text.length && text[i] == '*' && text[i + 1] == '*' -> {
-                    val end = text.indexOf("**", i + 2)
-                    if (end > 0) {
-                        val start = ssb.length
-                        ssb.append(text.substring(i + 2, end))
-                        ssb.setSpan(StyleSpan(Typeface.BOLD), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        i = end + 2
-                    } else {
-                        ssb.append(text[i])
-                        i++
-                    }
-                }
-                // 行内代码 `code`
-                text[i] == '`' -> {
-                    val end = text.indexOf('`', i + 1)
-                    if (end > 0) {
-                        val start = ssb.length
-                        ssb.append(" ${text.substring(i + 1, end)} ")
-                        ssb.setSpan(BackgroundColorSpan(codeBg), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        ssb.setSpan(ForegroundColorSpan(codeText), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        ssb.setSpan(TypefaceSpan("monospace"), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        ssb.setSpan(RelativeSizeSpan(0.9f), start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        i = end + 1
-                    } else {
-                        ssb.append(text[i])
-                        i++
-                    }
-                }
-                // Markdown 链接 [text](url)
-                text[i] == '[' -> {
-                    val closeBracket = text.indexOf(']', i + 1)
-                    if (closeBracket > 0 && closeBracket + 1 < text.length && text[closeBracket + 1] == '(') {
-                        val closeParen = text.indexOf(')', closeBracket + 2)
-                        if (closeParen > 0) {
-                            val linkText = text.substring(i + 1, closeBracket)
-                            val url = text.substring(closeBracket + 2, closeParen)
-                            val start = ssb.length
-                            ssb.append(linkText)
-                            ssb.setSpan(object : ClickableSpan() {
-                                override fun onClick(widget: View) {
-                                    openLink(widget.context, url)
-                                }
-                                override fun updateDrawState(ds: TextPaint) {
-                                    super.updateDrawState(ds)
-                                    ds.color = linkColor
-                                    ds.isUnderlineText = true
-                                }
-                            }, start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            i = closeParen + 1
-                            continue
-                        }
-                    }
-                    ssb.append(text[i])
-                    i++
-                }
-                // 裸链接 http:// 或 https://
-                text.substring(i).startsWith("http://") || text.substring(i).startsWith("https://") -> {
-                    val end = text.indexOf(' ', i).takeIf { it > 0 } ?: text.length
-                    val url = text.substring(i, end)
-                    val start = ssb.length
-                    ssb.append(url)
-                    ssb.setSpan(object : ClickableSpan() {
-                        override fun onClick(widget: View) {
-                            openLink(widget.context, url)
-                        }
-                        override fun updateDrawState(ds: TextPaint) {
-                            super.updateDrawState(ds)
-                            ds.color = linkColor
-                            ds.isUnderlineText = true
-                        }
-                    }, start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    i = end
-                }
-                else -> {
-                    ssb.append(text[i])
-                    i++
-                }
-            }
-        }
+    private fun getFileEmoji(fileName: String): String = when {
+        fileName.endsWith(".pdf") -> "📄"
+        fileName.endsWith(".doc") || fileName.endsWith(".docx") -> "🗒️"
+        fileName.endsWith(".xls") || fileName.endsWith(".xlsx") -> "📊"
+        fileName.endsWith(".txt") || fileName.endsWith(".md") -> "📝"
+        fileName.endsWith(".json") -> "💾"
+        else -> "📄"
     }
 
-    /**
-     * 打开链接
-     */
-    private fun openLink(context: Context, url: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, context.getString(R.string.link_open_failed), Toast.LENGTH_SHORT).show()
-        }
+    private fun formatFileSize(bytes: Long): String = when {
+        bytes >= 1048576 -> String.format("%.1f MB", bytes / 1048576.0)
+        bytes >= 1024 -> String.format("%.1f KB", bytes / 1024.0)
+        else -> "$bytes B"
     }
-
-    // ─── 工具日志 ────────────────────────────────────────────────────────
 
     private fun buildToolDetail(toolLogJson: String): String {
         return try {
-            val arr = org.json.JSONArray(toolLogJson)
+            val arr = JSONArray(toolLogJson)
             val sb = StringBuilder()
             for (i in 0 until arr.length()) {
                 val obj = arr.optJSONObject(i) ?: continue
@@ -696,17 +500,12 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         } catch (_: Exception) { toolLogJson }
     }
 
-    // ─── 剪贴板 ─────────────────────────────────────────────────────────
-
     private fun copyToClipboard(context: Context, text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("message", text))
         Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
     }
 
-    /**
-     * 全屏查看图片（使用 ImageViewerActivity，支持双指缩放）
-     */
     private fun showFullImage(context: Context, base64: String) {
         try {
             val intent = Intent(context, ImageViewerActivity::class.java).apply {
@@ -723,37 +522,27 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         }
     }
 
-    /**
-     * 打开缓存的文件
-     */
     private fun openCachedFile(context: Context, fileName: String) {
         try {
             val file = File(context.cacheDir, "docs/$fileName")
-            if (!file.exists()) {
-                // 尝试找一下实际存在的文件
-                val docsDir = File(context.cacheDir, "docs")
-                val existing = docsDir.listFiles()?.firstOrNull { it.name == fileName }
-                if (existing == null) {
-                    Toast.makeText(context, context.getString(R.string.chat_file_not_found, fileName), Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(context, context.getString(R.string.chat_file_found, existing.absolutePath), Toast.LENGTH_SHORT).show()
-                }
+            val actualFile = if (file.exists()) file
+            else File(context.cacheDir, "docs").listFiles()?.firstOrNull { it.name == fileName }
+
+            if (actualFile == null) {
+                Toast.makeText(context, context.getString(R.string.chat_file_not_found, fileName), Toast.LENGTH_LONG).show()
                 return
             }
-            // PDF 文件使用内置查看器
+
             if (fileName.endsWith(".pdf")) {
                 val intent = Intent(context, PdfViewerActivity::class.java).apply {
-                    putExtra("file_path", file.absolutePath)
+                    putExtra("file_path", actualFile.absolutePath)
                 }
-                if (context is android.app.Activity) {
-                    context.startActivity(intent)
-                } else {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                }
+                if (context is android.app.Activity) context.startActivity(intent)
+                else { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(intent) }
                 return
             }
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", actualFile)
             val mime = when {
                 fileName.endsWith(".txt") || fileName.endsWith(".md") -> "text/plain"
                 fileName.endsWith(".json") -> "application/json"
@@ -773,53 +562,35 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         }
     }
 
-    private fun formatFileSize(bytes: Long): String {
-        return when {
-            bytes >= 1048576 -> String.format("%.1f MB", bytes / 1048576.0)
-            bytes >= 1024 -> String.format("%.1f KB", bytes / 1024.0)
-            else -> "$bytes B"
-        }
-    }
+    // ─── Bot Edit Dialog (extracted from bind for clarity) ───────────────
 
-    /**
-     * 点击头像弹出修改名称和头像的对话框
-     */
-    private fun showEditBotDialog(context: android.content.Context, sessionId: String) {
+    private fun showEditBotDialog(context: Context, sessionId: String) {
         val prefs = context.getSharedPreferences("openclaw_prefs", 0)
         val nameKey = if (sessionId.isNotEmpty()) "bot_name_$sessionId" else "bot_name"
         val emojiKey = if (sessionId.isNotEmpty()) "bot_emoji_$sessionId" else "bot_emoji"
-        val currentName = prefs.getString(nameKey, null)
-            ?: prefs.getString("bot_name", "OpenClaw") ?: "OpenClaw"
-        val currentEmoji = prefs.getString(emojiKey, null)
-            ?: prefs.getString("bot_emoji", "🦞") ?: "🦞"
+        val currentName = prefs.getString(nameKey, null) ?: prefs.getString("bot_name", "OpenClaw") ?: "OpenClaw"
+        val currentEmoji = prefs.getString(emojiKey, null) ?: prefs.getString("bot_emoji", "🦞") ?: "🦞"
 
         val layout = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(60, 30, 60, 10)
         }
 
-        // Emoji 选择
         val emojiLabel = android.widget.TextView(context).apply {
-            text = context.getString(R.string.avatar_emoji_label)
-            textSize = 12f
-            setTextColor(0xFF888888.toInt())
+            text = context.getString(R.string.avatar_emoji_label); textSize = 12f; setTextColor(0xFF888888.toInt())
         }
         layout.addView(emojiLabel)
 
         val emojiOptions = arrayOf("🦞", "🤖", "👾", "🐱", "🐶", "🦊", "🐧", "🦉", "🐲", "🦄", "💀", "👻", "✨", "🔥", "🌟")
         val emojiRow = android.widget.LinearLayout(context).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-            setPadding(0, 10, 0, 20)
+            orientation = android.widget.LinearLayout.HORIZONTAL; setPadding(0, 10, 0, 20)
         }
 
         var selectedEmoji = currentEmoji
         val emojiViews = mutableListOf<android.widget.TextView>()
-
         for (emoji in emojiOptions) {
             val tv = android.widget.TextView(context).apply {
-                text = emoji
-                textSize = 24f
-                setPadding(12, 8, 12, 8)
+                text = emoji; textSize = 24f; setPadding(12, 8, 12, 8)
                 setOnClickListener {
                     selectedEmoji = emoji
                     emojiViews.forEach { v -> v.setBackgroundColor(0x00000000) }
@@ -827,30 +598,21 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                 }
                 if (emoji == currentEmoji) setBackgroundColor(0x206750A4)
             }
-            emojiViews.add(tv)
-            emojiRow.addView(tv)
+            emojiViews.add(tv); emojiRow.addView(tv)
         }
 
-        val scrollView = android.widget.HorizontalScrollView(context)
-        scrollView.addView(emojiRow)
-        layout.addView(scrollView)
+        layout.addView(android.widget.HorizontalScrollView(context).apply { addView(emojiRow) })
 
-        // 名称输入
         val nameLabel = android.widget.TextView(context).apply {
-            text = context.getString(R.string.avatar_name_label)
-            textSize = 12f
-            setTextColor(0xFF888888.toInt())
+            text = context.getString(R.string.avatar_name_label); textSize = 12f; setTextColor(0xFF888888.toInt())
         }
         layout.addView(nameLabel)
 
         val nameInput = android.widget.EditText(context).apply {
-            setText(currentName)
-            setSelection(text.length)
-            hint = context.getString(R.string.avatar_name_hint)
+            setText(currentName); setSelection(text.length); hint = context.getString(R.string.avatar_name_hint)
         }
         layout.addView(nameInput)
 
-        // 供应商选择（先选供应商，模型跟着变）
         val provLabel = android.widget.TextView(context).apply {
             text = "\n${context.getString(R.string.avatar_provider_label)}"; textSize = 12f; setTextColor(0xFF888888.toInt())
         }
@@ -859,18 +621,14 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         val provKey = if (sessionId.isNotEmpty()) "session_provider_$sessionId" else "current_provider"
         val modelKey = if (sessionId.isNotEmpty()) "session_model_$sessionId" else "current_model"
         val currentProv = prefs.getString(provKey, null) ?: "bailian"
-        val currentModel = prefs.getString(modelKey, null)
-            ?: prefs.getString("current_model", "qwen3.5-plus") ?: "qwen3.5-plus"
+        val currentModel = prefs.getString(modelKey, null) ?: prefs.getString("current_model", "qwen3.5-plus") ?: "qwen3.5-plus"
 
         val provsJson = prefs.getString("configured_providers", null)
         val provs = if (provsJson != null) {
-            try {
-                val arr = org.json.JSONArray(provsJson)
-                Array(arr.length()) { arr.getString(it) }
-            } catch (_: Exception) { arrayOf("bailian", "openai", "anthropic", "deepseek") }
-        } else {
-            arrayOf("bailian", "openai", "anthropic", "deepseek")
-        }
+            try { val arr = JSONArray(provsJson); Array(arr.length()) { arr.getString(it) } }
+            catch (_: Exception) { arrayOf("bailian", "openai", "anthropic", "deepseek") }
+        } else arrayOf("bailian", "openai", "anthropic", "deepseek")
+
         val provsList = provs.toMutableList()
         if (currentProv.isNotEmpty() && currentProv !in provsList) provsList.add(currentProv)
         val finalProvs = provsList.toTypedArray()
@@ -880,7 +638,6 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         provSpinner.setSelection(finalProvs.indexOf(currentProv).coerceAtLeast(0))
         layout.addView(provSpinner)
 
-        // 模型选择（根据所选供应商动态更新）
         val modelLabel = android.widget.TextView(context).apply {
             text = "\n${context.getString(R.string.avatar_model_label)}"; textSize = 12f; setTextColor(0xFF888888.toInt())
         }
@@ -892,11 +649,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         fun getModelsForProvider(provName: String): Array<String> {
             val json = prefs.getString("provider_models_$provName", null)
             val list = if (json != null) {
-                try {
-                    val arr = org.json.JSONArray(json)
-                    Array(arr.length()) { arr.getString(it) }
-                } catch (_: Exception) { emptyArray() }
-            } else { emptyArray() }
+                try { val arr = JSONArray(json); Array(arr.length()) { arr.getString(it) } }
+                catch (_: Exception) { emptyArray() }
+            } else emptyArray()
             val result = list.toMutableList()
             if (provName == currentProv && currentModel.isNotEmpty() && currentModel !in result) result.add(currentModel)
             return if (result.isEmpty()) arrayOf("(none)") else result.toTypedArray()
@@ -905,8 +660,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         fun updateModelSpinner(provName: String) {
             val provModels = getModelsForProvider(provName)
             modelSpinner.adapter = android.widget.ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, provModels)
-            val idx = provModels.indexOf(currentModel).coerceAtLeast(0)
-            modelSpinner.setSelection(idx)
+            modelSpinner.setSelection(provModels.indexOf(currentModel).coerceAtLeast(0))
         }
         updateModelSpinner(currentProv)
 
@@ -927,10 +681,8 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
                 val newProv = finalProvs[provSpinner.selectedItemPosition]
                 if (newName.isNotEmpty()) {
                     prefs.edit()
-                        .putString(nameKey, newName)
-                        .putString(emojiKey, selectedEmoji)
-                        .putString(modelKey, newModel)
-                        .putString(provKey, newProv)
+                        .putString(nameKey, newName).putString(emojiKey, selectedEmoji)
+                        .putString(modelKey, newModel).putString(provKey, newProv)
                         .apply()
                     notifyDataSetChanged()
                 }

@@ -45,6 +45,7 @@ import java.util.Locale
 class ChatFragment : Fragment() {
 
     companion object {
+        private const val TAG = "ChatFragment"
         private const val BASE_URL = "http://127.0.0.1:18789"
     }
 
@@ -92,7 +93,7 @@ class ChatFragment : Fragment() {
             if (!healthCheckRunning) return
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
-                    val resp = withContext(Dispatchers.IO) { httpGet("$BASE_URL/health") }
+                    withContext(Dispatchers.IO) { GatewayApi.health() }
                     healthFailCount = 0
                     if (!isEngineHealthy) {
                         isEngineHealthy = true
@@ -172,7 +173,7 @@ class ChatFragment : Fragment() {
         val netRequest = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
-        networkCallback = object : ConnectivityManager.NetworkCallback() {
+        val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 activity?.runOnUiThread {
                     isNetworkAvailable = true
@@ -189,7 +190,8 @@ class ChatFragment : Fragment() {
                 }
             }
         }
-        cm.registerNetworkCallback(netRequest, networkCallback!!)
+        networkCallback = callback
+        cm.registerNetworkCallback(netRequest, callback)
         val activeNet = cm.activeNetwork
         val caps = if (activeNet != null) cm.getNetworkCapabilities(activeNet) else null
         isNetworkAvailable = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
@@ -275,7 +277,9 @@ class ChatFragment : Fragment() {
         // Use context instead of requireContext() to avoid IllegalStateException after detach
         networkCallback?.let { callback ->
             context?.getSystemService(Context.CONNECTIVITY_SERVICE)?.let { cm ->
-                try { (cm as ConnectivityManager).unregisterNetworkCallback(callback) } catch (_: Exception) {}
+                try { (cm as ConnectivityManager).unregisterNetworkCallback(callback) } catch (e: Exception) {
+                    Log.w(TAG, "unregisterNetworkCallback failed", e)
+                }
             }
         }
         networkCallback = null
@@ -304,28 +308,16 @@ class ChatFragment : Fragment() {
 
     // Fix #1: Return Boolean to signal success/failure
     private suspend fun createNewSession(agentName: String? = null, systemPrompt: String? = null): Boolean {
-        // 引擎可能还没启动，最多重试 3 次（间隔 2s）
         var retries = 3
         while (retries > 0) {
             try {
                 val data = withContext(Dispatchers.IO) {
-                    val url = URL("$BASE_URL/api/sessions")
-                    val conn = url.openConnection() as HttpURLConnection
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                    conn.connectTimeout = 5000; conn.readTimeout = 5000; conn.doOutput = true
-                    val body = JSONObject().apply {
-                        put("title", agentName ?: getString(R.string.chat_new_session))
-                        if (currentModel.isNotEmpty()) put("model", currentModel)
-                        if (currentProvider.isNotEmpty()) put("provider", currentProvider)
-                        if (!systemPrompt.isNullOrEmpty()) put("system_prompt", systemPrompt)
-                    }
-                    OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()) }
-                    val code = conn.responseCode
-                    val resp = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
-                    conn.disconnect()
-                    if (code !in 200..299) throw Exception("HTTP $code")
-                    JSONObject(resp)
+                    GatewayApi.createSession(
+                        title = agentName ?: getString(R.string.chat_new_session),
+                        model = currentModel.takeIf { it.isNotEmpty() },
+                        provider = currentProvider.takeIf { it.isNotEmpty() },
+                        systemPrompt = systemPrompt
+                    )
                 }
                 sessionId = data.getJSONObject("session").getString("id")
                 currentSessionTitle = data.getJSONObject("session").optString("title", getString(R.string.chat_new_session))
@@ -333,28 +325,18 @@ class ChatFragment : Fragment() {
                 // Save welcome message to gateway so it persists across session switches
                 try {
                     withContext(Dispatchers.IO) {
-                        val welcomeBody = JSONObject().apply {
-                            put("role", "assistant")
-                            put("content", getString(R.string.chat_welcome))
-                        }
-                        val conn = URL("$BASE_URL/api/sessions/$sessionId/messages").openConnection() as HttpURLConnection
-                        conn.requestMethod = "POST"
-                        conn.setRequestProperty("Content-Type", "application/json")
-                        conn.doOutput = true
-                        conn.outputStream.write(welcomeBody.toString().toByteArray())
-                        conn.responseCode
-                        conn.disconnect()
+                        GatewayApi.saveSessionMessage(sessionId, "assistant", getString(R.string.chat_welcome))
                     }
-                } catch (_: Exception) {}
-                return true  // 成功
-            } catch (_: Exception) {
-                retries--
-                if (retries > 0) {
-                    delay(2000)  // 等引擎启动
+                } catch (e: Exception) {
+                    Log.w(TAG, "saveSessionMessage failed", e)
                 }
+                return true
+            } catch (e: Exception) {
+                retries--
+                Log.w(TAG, "initSession retry remaining: $retries", e)
+                if (retries > 0) delay(2000)
             }
         }
-        // 全部失败
         sessionId = ""
         updateTopBar()
         return false
@@ -373,8 +355,8 @@ class ChatFragment : Fragment() {
     private fun showModelPicker() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/models") }
-                val modelsArr = response.optJSONArray("models") ?: return@launch
+                val modelsArr = withContext(Dispatchers.IO) { GatewayApi.getModels() }
+                if (modelsArr.length() == 0) return@launch
                 val models = mutableListOf<Pair<String, String>>() // model, provider
                 for (i in 0 until modelsArr.length()) {
                     val obj = modelsArr.getJSONObject(i)
@@ -597,8 +579,7 @@ class ChatFragment : Fragment() {
 
     private suspend fun fetchModelInfoSync() {
         try {
-            val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-            val cfg = response.optJSONObject("config") ?: response
+            val cfg = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
             val model = cfg.optString("model", "")
             currentModel = if (model.isEmpty()) "qwen3.5-plus" else model
             val prov = cfg.optString("default_provider", "")
@@ -642,8 +623,8 @@ class ChatFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/tools") }
-                tvToolCount.text = "${response.optInt("count", 0)} tools"
+                val tools = withContext(Dispatchers.IO) { GatewayApi.getTools() }
+                tvToolCount.text = "${tools.optInt("count", 0)} tools"
             } catch (_: Exception) {
                 tvToolCount.text = ""
             }
@@ -655,8 +636,7 @@ class ChatFragment : Fragment() {
     private fun showSessionList() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/sessions") }
-                val arr = response.getJSONArray("sessions")
+                val arr = withContext(Dispatchers.IO) { GatewayApi.getSessions() }
                 val sessions = mutableListOf<Session>()
                 for (i in 0 until arr.length()) {
                     val obj = arr.getJSONObject(i)
@@ -698,7 +678,7 @@ class ChatFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val data = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/sessions/$sid") }
+                val data = withContext(Dispatchers.IO) { GatewayApi.getSession(sid) }
                 // Fix #8: Only apply if this is still the latest loading request
                 if (loadingSessionId != sid || sessionId != sid) return@launch
                 val sessionObj = data.getJSONObject("session")
@@ -760,16 +740,8 @@ class ChatFragment : Fragment() {
             .setPositiveButton(getString(R.string.chat_delete)) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) {
-                            val url = URL("$BASE_URL/api/sessions/${session.id}")
-                            val conn = url.openConnection() as HttpURLConnection
-                            conn.requestMethod = "DELETE"
-                            conn.connectTimeout = 5000; conn.readTimeout = 5000
-                            conn.responseCode; conn.disconnect()
-                        }
-                        if (session.id == sessionId) {
-                            createNewSession()
-                        }
+                        withContext(Dispatchers.IO) { GatewayApi.deleteSession(session.id) }
+                        if (session.id == sessionId) createNewSession()
                         view?.let { Snackbar.make(it, getString(R.string.chat_session_deleted), Snackbar.LENGTH_SHORT).show() }
                         onDone()
                     } catch (e: Exception) {
@@ -786,7 +758,7 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 // Fetch messages from API for the target session
-                val data = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/sessions/${session.id}") }
+                val data = withContext(Dispatchers.IO) { GatewayApi.getSession(session.id) }
                 val arr = data.getJSONObject("session").getJSONArray("messages")
                 val sb = StringBuilder()
                 sb.appendLine("# ${session.title}")
@@ -826,17 +798,12 @@ class ChatFragment : Fragment() {
             .setPositiveButton(getString(R.string.chat_clear_context)) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) {
-                            val url = URL("$BASE_URL/api/sessions/${session.id}")
-                            val conn = url.openConnection() as HttpURLConnection
-                            conn.requestMethod = "DELETE"
-                            conn.connectTimeout = 5000; conn.readTimeout = 5000
-                            conn.responseCode; conn.disconnect()
-                        }
-                        // Start a new session with same ID effectively clears context
+                        withContext(Dispatchers.IO) { GatewayApi.clearSessionContext(session.id) }
                         startNewSession()
                         Toast.makeText(context, getString(R.string.chat_context_cleared), Toast.LENGTH_SHORT).show()
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "clearSessionContext failed", e)
+                    }
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -855,20 +822,12 @@ class ChatFragment : Fragment() {
                 if (title.isEmpty()) return@setPositiveButton
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) {
-                            val url = URL("$BASE_URL/api/sessions/${session.id}/title")
-                            val conn = url.openConnection() as HttpURLConnection
-                            conn.requestMethod = "POST"
-                            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                            conn.doOutput = true
-                            OutputStreamWriter(conn.outputStream, "UTF-8").use {
-                                it.write(JSONObject().apply { put("title", title) }.toString())
-                            }
-                            conn.responseCode; conn.disconnect()
-                        }
+                        withContext(Dispatchers.IO) { GatewayApi.renameSession(session.id, title) }
                         if (session.id == sessionId) { currentSessionTitle = title; updateTopBar() }
                         onDone()
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        Log.w(TAG, "renameSession failed", e)
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.cancel), null)
@@ -1037,29 +996,12 @@ class ChatFragment : Fragment() {
         var lastException: Exception? = null
         for (attempt in 0..retryDelays.size) {
             try {
-                val url = URL("$BASE_URL/api/agent/chat")
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true
-                val body = JSONObject().apply {
-                    put("message", message)
-                    if (sid.isNotEmpty()) put("session_id", sid)
-                    if (currentModel.isNotEmpty()) put("model", currentModel)
-                    if (currentProvider.isNotEmpty()) put("provider", currentProvider)
-                }
-                OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
-                val code = conn.responseCode
-                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-                val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-                conn.disconnect()
-                if (code !in 200..299) {
-                    if (resp.trimStart().startsWith("<")) {
-                        throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
-                    }
-                    throw Exception("HTTP $code: $resp")
-                }
-                return JSONObject(resp)
+                return GatewayApi.agentChat(
+                    message = message,
+                    sessionId = sid.takeIf { it.isNotEmpty() },
+                    model = currentModel.takeIf { it.isNotEmpty() },
+                    provider = currentProvider.takeIf { it.isNotEmpty() }
+                )
             } catch (e: Exception) {
                 lastException = e
                 if (attempt < retryDelays.size && isRetryableException(e)) {
@@ -1087,25 +1029,17 @@ class ChatFragment : Fragment() {
                 Thread.sleep(retryDelays[attempt - 1])
             }
             try {
-                val url = URL("$BASE_URL/api/agent/chat")
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                conn.setRequestProperty("Accept", "text/event-stream")
-                conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true
-                val body = JSONObject().apply {
-                    put("message", message)
-                    if (sid.isNotEmpty()) put("session_id", sid)
-                    if (currentModel.isNotEmpty()) put("model", currentModel)
-                    if (currentProvider.isNotEmpty()) put("provider", currentProvider)
-                    put("stream", true)
-                }
-                OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
+                val conn = GatewayApi.agentChatStream(
+                    message = message,
+                    sessionId = sid.takeIf { it.isNotEmpty() },
+                    model = currentModel.takeIf { it.isNotEmpty() },
+                    provider = currentProvider.takeIf { it.isNotEmpty() }
+                )
 
                     val code = conn.responseCode
                     if (code !in 200..299) {
-                        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-                        val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
+                        val errorStream = if (code in 400..599) conn.errorStream else conn.inputStream
+                        val resp = BufferedReader(InputStreamReader(errorStream, "UTF-8")).use { it.readText() }
                         conn.disconnect()
                         if (resp.trimStart().startsWith("<")) {
                             throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
@@ -1248,6 +1182,7 @@ class ChatFragment : Fragment() {
                                     }
                                 }
                             } catch (e: Exception) {
+                                Log.w(TAG, "stream read error during receive", e)
                             }
                         }
                     }
@@ -1270,30 +1205,13 @@ class ChatFragment : Fragment() {
     }
 
     private fun postImage(base64: String, sid: String): JSONObject {
-        val url = URL("$BASE_URL/api/agent/chat")
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.connectTimeout = 60000; conn.readTimeout = 600000; conn.doOutput = true // 10 min for multi-step agent
-        val body = JSONObject().apply {
-            put("message", getString(R.string.chat_analyze_image_prompt))
-            put("image_base64", base64)
-            if (sid.isNotEmpty()) put("session_id", sid)
-            if (currentModel.isNotEmpty()) put("model", currentModel)
-            if (currentProvider.isNotEmpty()) put("provider", currentProvider)
-        }
-        OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body.toString()); it.flush() }
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val resp = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) {
-            if (resp.trimStart().startsWith("<")) {
-                throw Exception("HTTP $code: Provider returned HTML error (API key invalid or rate limited)")
-            }
-            throw Exception("HTTP $code: $resp")
-        }
-        return JSONObject(resp)
+        return GatewayApi.agentChat(
+            message = getString(R.string.chat_analyze_image_prompt),
+            sessionId = sid.takeIf { it.isNotEmpty() },
+            model = currentModel.takeIf { it.isNotEmpty() },
+            provider = currentProvider.takeIf { it.isNotEmpty() },
+            imageBase64 = base64
+        )
     }
 
     // Fix #3: Only scroll if user is already near bottom (don't interrupt reading history)
@@ -1308,25 +1226,15 @@ class ChatFragment : Fragment() {
         }
     }
 
-    private fun httpGet(urlStr: String): JSONObject {
-        val url = URL(urlStr)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "GET"; conn.connectTimeout = 10000; conn.readTimeout = 10000
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val body = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $body")
-        return JSONObject(body)
-    }
-
     private fun formatTime(raw: String): String {
         if (raw.isEmpty()) return getString(R.string.chat_just_now)
         return try {
             val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
             val out = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-            out.format(fmt.parse(raw)!!)
-        } catch (_: Exception) { raw }
+            out.format(fmt.parse(raw) ?: return raw)
+        } catch (e: Exception) {
+            raw
+        }
     }
 
     /**

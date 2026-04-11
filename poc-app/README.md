@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.5.0-green.svg" alt="Version: 1.5.0"></a>
+  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.6.0-green.svg" alt="Version: 1.6.0"></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-2.0-purple.svg" alt="Kotlin"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-embedded-brightgreen.svg" alt="Node.js embedded"></a>
 </p>
@@ -72,9 +72,9 @@ v1.4.0 新增：每条 AI 消息旁都有朗读按钮，点击即可语音播放
 - 🌙 **深色模式** — 完整的 Material Design 暗色主题
 - 📋 **代码块复制** — 一键复制代码片段
 - 🔗 **链接点击** — Markdown 链接和裸链接均可跳转
+- 📝 **Markdown 渲染**（v1.6.0）— 标题、粗体、斜体、代码块、列表、链接正确显示
 - 🔍 **消息搜索** — 实时高亮 + 自动滚动定位
 - 📤 **聊天导出** — 导出为 Markdown 文件
-- 💾 **备份/恢复** — 一键备份所有配置、记忆、会话
 - 🌐 **多语言** — 中文 / English 实时切换
 
 ### ⚙️ 系统能力
@@ -165,7 +165,10 @@ poc-app/
 │   ├── java/ai/openclaw/poc/
 │   │   ├── MainActivity.kt            # 主 Activity + Tab 导航 + 权限请求
 │   │   ├── ChatFragment.kt            # 聊天界面 + SSE 流式处理 + TTS 朗读
-│   │   ├── MessageAdapter.kt          # 消息列表适配器（含 TTS 按钮）
+│   │   ├── MessageAdapter.kt          # 消息列表适配器（含 TTS 按钮 + Markdown 渲染）
+│   ├── MarkdownRenderer.kt        # Markdown → Spanned 渲染器（v1.6.0）
+│   ├── GatewayApi.kt              # 集中式 Gateway HTTP 客户端（v1.6.0）
+│   ├── GatewayClient.kt           # SSE 流式通信客户端（v1.6.0）
 │   │   ├── ImageViewerActivity.kt     # 全屏图片查看器（双指缩放）
 │   │   ├── PdfViewerActivity.kt       # PDF 查看器（分页浏览）
 │   │   ├── SettingsFragment.kt        # 设置页（模型/供应商/备份/权限状态）
@@ -184,7 +187,6 @@ poc-app/
 │   │   ├── CameraCaptureActivity.kt   # 透明拍照 Activity
 │   │   ├── PhotoStore.kt              # 照片缓冲区
 │   │   ├── PermissionManager.kt       # 运行时权限管理
-│   │   ├── ComprehensiveTest.kt       # 集成测试套件
 │   │   ├── ViewPagerAdapter.kt        # Tab 页适配器
 │   │   └── LocaleHelper.kt            # 多语言支持
 │   ├── assets/openclaw-engine/
@@ -332,10 +334,15 @@ adb logcat | grep "OpenClaw"
 
 ### 运行测试
 
-App 内置 Comprehensive Test 套件：
-- 打开 App → 设置 → 运行测试
-- 自动测试 Gateway API、Browser Bridge、Device Control API
-- 输出结构化报告
+```bash
+# 查看 Gateway 日志
+adb logcat | grep -E "NodeRunner|Gateway"
+
+# 查看完整应用日志
+adb logcat | grep "OpenClaw"
+```
+
+> **提示**：v1.5.0 之前内置的 `ComprehensiveTest` 已移除。调试可通过 ADB logcat 直接查看 Gateway 和 App 日志。
 
 ---
 
@@ -359,6 +366,7 @@ App 内置 Comprehensive Test 套件：
 - [x] Release 构建（R8 混淆 + 签名 + 资源压缩）
 - [x] APK 体积优化（release: 仅 arm64-v8a，17.68 MB）
 - [x] Debug 双架构（+x86_64，模拟器开发）
+- [x] 代码架构重构：GatewayApi 集中式客户端 + SSE 流式 + Markdown 渲染
 
 ### 规划中
 - [ ] 消息加密传输

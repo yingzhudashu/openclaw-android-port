@@ -45,16 +45,17 @@ class CameraCaptureActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        requestId = intent.getStringExtra(EXTRA_REQUEST_ID)
-        if (requestId.isNullOrEmpty()) {
+        val rid = intent.getStringExtra(EXTRA_REQUEST_ID)
+        if (rid.isNullOrEmpty()) {
             Log.w(TAG, "No request_id provided")
             finish()
             return
         }
+        requestId = rid
 
         // Check camera permission
         if (!PermissionManager.hasCamera(this)) {
-            PhotoStore.setError(requestId!!, "Camera permission not granted")
+            PhotoStore.setError(rid, "Camera permission not granted")
             Toast.makeText(this, "请先授予相机权限", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -65,7 +66,7 @@ class CameraCaptureActivity : Activity() {
             createImageFile()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create image file: ${e.message}")
-            PhotoStore.setError(requestId!!, "Failed to create photo file: ${e.message}")
+            PhotoStore.setError(rid, "Failed to create photo file: ${e.message}")
             Toast.makeText(this, "无法创建照片文件", Toast.LENGTH_SHORT).show()
             finish()
             return

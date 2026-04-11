@@ -53,12 +53,13 @@ object PhotoStore {
         val deadline = System.currentTimeMillis() + MAX_WAIT_MS
         while (System.currentTimeMillis() < deadline) {
             synchronized(req.latch) {
-                if (req.photoFile != null) {
+                val file = req.photoFile
+                if (file != null) {
                     return PhotoResult(
-                        filePath = req.photoFile!!.absolutePath,
-                        base64 = encodeToBase64(req.photoFile!!),
-                        width = getImageWidth(req.photoFile!!),
-                        height = getImageHeight(req.photoFile!!)
+                        filePath = file.absolutePath,
+                        base64 = encodeToBase64(file),
+                        width = getImageWidth(file),
+                        height = getImageHeight(file)
                     )
                 }
                 if (req.error != null) {

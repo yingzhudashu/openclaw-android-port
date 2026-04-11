@@ -1,170 +1,119 @@
 package ai.openclaw.poc
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.Manifest
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 
 /**
- * Permission Manager (v1.4.0)
- * 
- * Centralized runtime permission management for:
- * - 📍 Location (ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION)
- * - 📷 Camera (CAMERA)
- * - 🎤 Microphone (RECORD_AUDIO)
- * - 🔔 Notifications (POST_NOTIFICATIONS)
- * - 📁 Storage (READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE)
+ * 集中管理 App 所需的所有运行时权限
+ * 替代原来散落在各处的权限逻辑
  */
 object PermissionManager {
 
-    // Request codes
-    const val REQUEST_LOCATION = 1001
-    const val REQUEST_CAMERA = 1002
-    const val REQUEST_AUDIO = 1003
-    const val REQUEST_NOTIFICATIONS = 1004
-    const val REQUEST_STORAGE = 1005
-    const val REQUEST_ALL = 1000
-
     data class PermissionStatus(
         val name: String,
-        val icon: String,
-        val granted: Boolean,
+        val androidPermission: String,
         val rationale: String,
-        val permissions: List<String>
+        val granted: Boolean
+    )
+
+    // 权限定义
+    val PERMISSIONS = mapOf(
+        "location" to PermissionStatus(
+            name = "📍 位置信息",
+            androidPermission = Manifest.permission.ACCESS_FINE_LOCATION,
+            rationale = "用于获取天气信息和基于位置的服务",
+            granted = false
+        ),
+        "camera" to PermissionStatus(
+            name = "📷 相机",
+            androidPermission = Manifest.permission.CAMERA,
+            rationale = "用于拍照、扫码和图像识别功能",
+            granted = false
+        ),
+        "audio" to PermissionStatus(
+            name = "🎤 麦克风",
+            androidPermission = Manifest.permission.RECORD_AUDIO,
+            rationale = "用于语音输入和语音交互功能",
+            granted = false
+        ),
+        "notification" to PermissionStatus(
+            name = "🔔 通知",
+            androidPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                Manifest.permission.POST_NOTIFICATIONS else "",
+            rationale = "用于推送任务完成通知和重要提醒",
+            granted = false
+        ),
+        "storage" to PermissionStatus(
+            name = "💾 存储",
+            androidPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE,
+            rationale = "用于读取和保存文件、图片",
+            granted = false
+        )
     )
 
     /**
-     * Check all managed permissions and return their status
+     * 检查并更新所有权限状态
      */
     fun getAllPermissionStatus(context: Context): List<PermissionStatus> {
-        return listOf(
-            PermissionStatus(
-                name = "📍 位置",
-                icon = "location",
-                granted = hasLocation(context),
-                rationale = "用于获取设备 GPS 位置信息",
-                permissions = listOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            ),
-            PermissionStatus(
-                name = "📷 相机",
-                icon = "camera",
-                granted = hasCamera(context),
-                rationale = "用于拍照功能",
-                permissions = listOf(Manifest.permission.CAMERA)
-            ),
-            PermissionStatus(
-                name = "🎤 麦克风",
-                icon = "microphone",
-                granted = hasAudio(context),
-                rationale = "用于语音输入",
-                permissions = listOf(Manifest.permission.RECORD_AUDIO)
-            ),
-            PermissionStatus(
-                name = "🔔 通知",
-                icon = "notification",
-                granted = hasNotification(context),
-                rationale = "用于发送应用通知",
-                permissions = listOf(Manifest.permission.POST_NOTIFICATIONS)
-            ),
-            PermissionStatus(
-                name = "📁 存储",
-                icon = "storage",
-                granted = hasStorage(context),
-                rationale = "用于读取/保存照片和文件",
-                permissions = getStoragePermissions()
-            )
-        )
-    }
-
-    /**
-     * Request all permissions at once
-     */
-    fun requestAllPermissions(activity: Activity) {
-        val permissionsToRequest = mutableListOf<String>()
-
-        // Location
-        if (!hasLocation(activity)) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
-            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-
-        // Camera
-        if (!hasCamera(activity)) {
-            permissionsToRequest.add(Manifest.permission.CAMERA)
-        }
-
-        // Audio
-        if (!hasAudio(activity)) {
-            permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
-        }
-
-        // Notifications (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!hasNotification(activity)) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        return PERMISSIONS.values.map { status ->
+            if (status.androidPermission.isEmpty()) {
+                status.copy(granted = true) // 低版本不需要此权限
+            } else {
+                val granted = context.checkSelfPermission(status.androidPermission) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+                status.copy(granted = granted)
             }
         }
-
-        // Storage
-        if (!hasStorage(activity)) {
-            permissionsToRequest.addAll(getStoragePermissions())
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                activity,
-                permissionsToRequest.toTypedArray(),
-                REQUEST_ALL
-            )
-        }
     }
 
     /**
-     * Request a specific permission group
+     * 获取权限摘要文本
      */
-    fun requestPermission(activity: Activity, permissionType: String) {
-        val permissions = when (permissionType) {
-            "location" -> listOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-            "camera" -> listOf(Manifest.permission.CAMERA)
-            "audio" -> listOf(Manifest.permission.RECORD_AUDIO)
-            "notification" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                listOf(Manifest.permission.POST_NOTIFICATIONS)
-            } else emptyList()
-            "storage" -> getStoragePermissions()
-            else -> emptyList()
-        }
-
-        if (permissions.isNotEmpty()) {
-            val requestCode = when (permissionType) {
-                "location" -> REQUEST_LOCATION
-                "camera" -> REQUEST_CAMERA
-                "audio" -> REQUEST_AUDIO
-                "notification" -> REQUEST_NOTIFICATIONS
-                "storage" -> REQUEST_STORAGE
-                else -> REQUEST_ALL
-            }
-            ActivityCompat.requestPermissions(
-                activity,
-                permissions.toTypedArray(),
-                requestCode
-            )
-        }
+    fun getSummary(context: Context): String {
+        val statuses = getAllPermissionStatus(context)
+        val granted = statuses.count { it.granted }
+        val total = statuses.size
+        return if (granted == total) "✅ 全部已授权" else "$granted/$total 已授权"
     }
 
     /**
-     * Open app settings page for manual permission management
+     * 获取未授权的权限列表
+     */
+    fun getDeniedPermissions(context: Context): List<String> {
+        return getAllPermissionStatus(context)
+            .filterNot { it.granted }
+            .mapNotNull { status ->
+                PERMISSIONS.entries.find { it.value.name == status.name }?.key
+            }
+    }
+
+    /**
+     * 检查所有必要权限是否已授予
+     */
+    fun allGranted(context: Context): Boolean {
+        return getDeniedPermissions(context).isEmpty()
+    }
+
+    /**
+     * 请求单个权限（需在 Activity 中调用）
+     */
+    fun requestPermission(activity: Activity, permissionKey: String) {
+        val permission = PERMISSIONS[permissionKey]?.androidPermission ?: return
+        if (permission.isEmpty()) return
+        ActivityCompat.requestPermissions(activity, arrayOf(permission), 100 + permissionKey.hashCode())
+    }
+
+    /**
+     * 打开 App 系统设置页
      */
     fun openAppSettings(context: Context) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -173,67 +122,37 @@ object PermissionManager {
         context.startActivity(intent)
     }
 
-    // ─── Permission Checks ───────────────────────────────────────
-
-    fun hasLocation(context: Context): Boolean {
-        return hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
-               hasPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
-
-    fun hasCamera(context: Context): Boolean {
-        return hasPermission(context, Manifest.permission.CAMERA)
-    }
-
-    fun hasAudio(context: Context): Boolean {
-        return hasPermission(context, Manifest.permission.RECORD_AUDIO)
-    }
-
-    fun hasNotification(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            true // Pre-Android 13 doesn't need notification permission
-        }
-    }
-
-    fun hasStorage(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            hasPermission(context, Manifest.permission.READ_MEDIA_IMAGES)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            true // Android 10+ has scoped storage
-        } else {
-            hasPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-    }
-
-    private fun hasPermission(context: Context, permission: String): Boolean {
+    /**
+     * 检查单个权限是否已授予
+     */
+    fun isGranted(context: Context, permissionKey: String): Boolean {
+        val permission = PERMISSIONS[permissionKey]?.androidPermission ?: return false
+        if (permission.isEmpty()) return true
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun getStoragePermissions(): List<String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            listOf(Manifest.permission.READ_MEDIA_IMAGES)
-        } else if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
-            emptyList() // Scoped storage, no permission needed
-        } else {
-            listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-    }
+    /**
+     * 便捷方法：检查位置权限
+     */
+    fun hasLocation(context: Context): Boolean = isGranted(context, "location")
 
     /**
-     * Get a human-readable summary of all permissions
+     * 便捷方法：检查相机权限
      */
-    fun getSummary(context: Context): String {
-        val status = getAllPermissionStatus(context)
-        val granted = status.count { it.granted }
-        val total = status.size
-        return "$granted/$total 已授权"
-    }
+    fun hasCamera(context: Context): Boolean = isGranted(context, "camera")
 
     /**
-     * Check if any critical permissions are missing
+     * 便捷方法：检查通知权限
      */
-    fun hasAnyMissing(context: Context): Boolean {
-        return getAllPermissionStatus(context).any { !it.granted }
-    }
+    fun hasNotification(context: Context): Boolean = isGranted(context, "notification")
+
+    /**
+     * 便捷方法：检查存储权限
+     */
+    fun hasStorage(context: Context): Boolean = isGranted(context, "storage")
+
+    /**
+     * 便捷方法：检查麦克风权限
+     */
+    fun hasAudio(context: Context): Boolean = isGranted(context, "audio")
 }

@@ -21,14 +21,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
 
 class SettingsFragment : Fragment() {
 
     companion object {
-        private const val BASE_URL = "http://127.0.0.1:18789"
+        private const val TAG = "SettingsFragment"
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY = 2000L
     }
@@ -59,21 +56,21 @@ class SettingsFragment : Fragment() {
     private val fileCache = mutableMapOf<String, String>()
     private var cachedSkills = JSONArray()
 
-    private val defaultProviders = arrayOf("bailian", "openai", "anthropic", "deepseek")
+    private val defaultProviders = arrayOf("bailian", "openai", "anthropic", "deepseek", "siliconflow")
     private val defaultModels = listOf(
-        "qwen3.5-plus", "gpt-4o",
-        "claude-sonnet-4-6", "deepseek-chat"
+        "qwen3.6-plus", "gpt-4o",
+        "claude-sonnet-4-6", "deepseek-chat", "qwen3.5-plus"
+    )
+    // Preset base URLs for known providers
+    private val defaultBaseUrls = mapOf(
+        "bailian" to "https://coding.dashscope.aliyuncs.com/v1",
+        "openai" to "https://api.openai.com/v1",
+        "anthropic" to "https://api.anthropic.com/v1",
+        "deepseek" to "https://api.deepseek.com/v1",
+        "siliconflow" to "https://api.siliconflow.cn/v1"
     )
 
-    data class FileConfig(val getUrl: String, val postUrl: String, val contentField: String)
-    private val fileConfigs = mapOf(
-        "SOUL.md" to FileConfig("$BASE_URL/api/soul", "$BASE_URL/api/soul", "content"),
-        "HEARTBEAT.md" to FileConfig("$BASE_URL/api/heartbeat", "$BASE_URL/api/heartbeat", "content"),
-        "USER.md" to FileConfig("$BASE_URL/api/user", "$BASE_URL/api/user", "content"),
-        "AGENTS.md" to FileConfig("$BASE_URL/api/agents", "$BASE_URL/api/agents", "content"),
-        "TOOLS.md" to FileConfig("$BASE_URL/api/tools-md", "$BASE_URL/api/tools-md", "content"),
-        "MEMORY.md" to FileConfig("$BASE_URL/api/memory", "$BASE_URL/api/memory", "content"),
-    )
+    // File editing endpoints are now centralized in GatewayApi.FILE_ENDPOINTS
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -143,7 +140,9 @@ class SettingsFragment : Fragment() {
         try {
             val info = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
             tvVersion.text = "v${info.versionName}"
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "getPackageInfo failed", e)
+        }
 
         // (comment)
         val lang = LocaleHelper.getLanguage(requireContext())
@@ -225,8 +224,7 @@ class SettingsFragment : Fragment() {
     }
 
     private suspend fun loadConfig() {
-        val response = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-        val config = response.optJSONObject("config") ?: response
+        val config = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
         cachedModel = config.optString("model", "")
 
         providerConfigs.clear()
@@ -324,9 +322,7 @@ class SettingsFragment : Fragment() {
         )
         for ((fileName, tv) in tvMap) {
             try {
-                val cfg = fileConfigs[fileName] ?: continue
-                val resp = withContext(Dispatchers.IO) { httpGet(cfg.getUrl) }
-                val content = resp.optString(cfg.contentField, "")
+                val content = withContext(Dispatchers.IO) { GatewayApi.getFileContent(fileName) }
                 fileCache[fileName] = content
                 tv.text = if (content.isEmpty()) getString(R.string.empty_content)
                     else content.trimStart().lines().firstOrNull()?.take(20)?.replace("#", "")?.trim()?.ifEmpty { "..." } ?: "..."
@@ -336,8 +332,7 @@ class SettingsFragment : Fragment() {
 
     private suspend fun loadSkills() {
         try {
-            val resp = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/skills") }
-            cachedSkills = resp.optJSONArray("skills") ?: JSONArray()
+            cachedSkills = withContext(Dispatchers.IO) { GatewayApi.getSkills() }
             tvSkillsCount.text = getString(R.string.n_items, cachedSkills.length())
         } catch (_: Exception) { tvSkillsCount.text = getString(R.string.n_items, 0) }
     }
@@ -354,8 +349,7 @@ class SettingsFragment : Fragment() {
         // Always fetch fresh from API
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-                val cfgObj = cfg.optJSONObject("config") ?: cfg
+                val cfgObj = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
                 // Sync to SharedPreferences first
                 syncModelProviderListsToPrefs(cfgObj)
 
@@ -450,11 +444,7 @@ class SettingsFragment : Fragment() {
     private fun saveModel(model: String, provider: String? = null) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val body = JSONObject().apply {
-                    put("model", model)
-                    if (provider != null) put("default_provider", provider)
-                }
-                withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/config", body) }
+                withContext(Dispatchers.IO) { GatewayApi.updateModel(model, provider) }
                 cachedModel = model; updateModelProviderSummary()
                 val prefs = requireContext().getSharedPreferences("openclaw_prefs", 0)
                 val editor = prefs.edit().putString("current_model", model)
@@ -498,8 +488,7 @@ class SettingsFragment : Fragment() {
             var existingKey = providerConfigs[providerName]?.first ?: ""
             var existingUrl = providerConfigs[providerName]?.second ?: ""
             try {
-                val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-                val cfgObj = cfg.optJSONObject("config") ?: cfg
+                val cfgObj = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
                 val provObj = cfgObj.optJSONObject("providers")?.optJSONObject(providerName)
                 if (provObj != null) {
                     val arr = provObj.optJSONArray("models")
@@ -509,7 +498,9 @@ class SettingsFragment : Fragment() {
                     }
                     if (existingUrl.isEmpty()) existingUrl = provObj.optString("base_url", "")
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "loadProviderConfig failed", e)
+            }
             showProviderEditDialog(providerName, existingKey, existingUrl, provModels)
         }
     }
@@ -533,7 +524,12 @@ class SettingsFragment : Fragment() {
         layout.addView(keyInput)
 
         layout.addView(TextView(requireContext()).apply { text = "\n${getString(R.string.settings_base_url)}"; textSize = 12f; setTextColor(0xFF888888.toInt()) })
-        val urlInput = EditText(requireContext()).apply { setText(currentUrl); hint = "https://api.example.com/v1" }
+        val presetUrl = defaultBaseUrls[providerName] ?: ""
+        val urlHint = if (presetUrl.isNotEmpty()) presetUrl else "https://api.example.com/v1"
+        val urlInput = EditText(requireContext()).apply {
+            setText(currentUrl.ifEmpty { presetUrl })
+            hint = urlHint
+        }
         layout.addView(urlInput)
 
         layout.addView(TextView(requireContext()).apply {
@@ -604,14 +600,15 @@ class SettingsFragment : Fragment() {
                                 })
                             })
                         }
-                        withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/config", body) }
+                        withContext(Dispatchers.IO) { GatewayApi.updateProvider(providerName, apiKey, baseUrl, models) }
                         providerConfigs[providerName] = Pair(apiKey, baseUrl)
                         updateModelProviderSummary()
                         try {
-                            val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-                            val cfgObj = cfg.optJSONObject("config") ?: cfg
+                            val cfgObj = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
                             syncModelProviderListsToPrefs(cfgObj)
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) {
+                            android.util.Log.w(TAG, "syncModelProviderListsToPrefs failed", e)
+                        }
                         snack(getString(R.string.settings_provider_saved, providerName))
                     } catch (_: Exception) { snack(getString(R.string.settings_save_failed, "")) }
                 }
@@ -634,17 +631,18 @@ class SettingsFragment : Fragment() {
                         put(providerName, JSONObject().apply { put("_delete", true) })
                     })
                 }
-                withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/config", body) }
+                withContext(Dispatchers.IO) { GatewayApi.deleteProvider(providerName) }
                 providerConfigs.remove(providerName)
                 updateModelProviderSummary()
                 // Clean up per-provider prefs and re-sync
                 val prefs = requireContext().getSharedPreferences("openclaw_prefs", 0)
                 prefs.edit().remove("provider_models_$providerName").apply()
                 try {
-                    val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-                    val cfgObj = cfg.optJSONObject("config") ?: cfg
+                    val cfgObj = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
                     syncModelProviderListsToPrefs(cfgObj)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    android.util.Log.w(TAG, "syncModelProviderListsToPrefs on delete failed", e)
+                }
                 snack(getString(R.string.settings_provider_deleted, providerName))
             } catch (_: Exception) { snack(getString(R.string.settings_save_failed, "")) }
         }
@@ -652,12 +650,10 @@ class SettingsFragment : Fragment() {
 
     private fun editFile(fileName: String, title: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val cfg = fileConfigs[fileName] ?: return@launch
             var content = fileCache[fileName]
             if (content == null) {
                 try {
-                    val resp = withContext(Dispatchers.IO) { httpGet(cfg.getUrl) }
-                    content = resp.optString(cfg.contentField, "")
+                    content = withContext(Dispatchers.IO) { GatewayApi.getFileContent(fileName) }
                     fileCache[fileName] = content
                 } catch (_: Exception) { content = "" }
             }
@@ -673,7 +669,7 @@ class SettingsFragment : Fragment() {
                     val newContent = editText.text.toString()
                     viewLifecycleOwner.lifecycleScope.launch {
                         try {
-                            withContext(Dispatchers.IO) { httpPost(cfg.postUrl, JSONObject().apply { put("content", newContent) }) }
+                            withContext(Dispatchers.IO) { GatewayApi.saveFileContent(fileName, newContent) }
                             fileCache[fileName] = newContent
                             val summary = if (newContent.isEmpty()) getString(R.string.empty_content)
                                 else newContent.trimStart().lines().firstOrNull()?.take(20)?.replace("#", "")?.trim()?.ifEmpty { "..." } ?: "..."
@@ -698,7 +694,9 @@ class SettingsFragment : Fragment() {
 
     private fun showSkillsList() {
         viewLifecycleOwner.lifecycleScope.launch {
-            try { retryLoad { loadSkills() } } catch (_: Exception) {}
+            try { retryLoad { loadSkills() } } catch (e: Exception) {
+                android.util.Log.w(TAG, "loadSkills failed", e)
+            }
             if (cachedSkills.length() == 0) { snack(getString(R.string.settings_no_skills)); return@launch }
 
             val names = mutableListOf<String>()
@@ -719,7 +717,7 @@ class SettingsFragment : Fragment() {
     private fun showSkillDetail(name: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val resp = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/skills/$name") }
+                val resp = withContext(Dispatchers.IO) { GatewayApi.getSkillDetail(name) }
                 val content = resp.optString("content", "")
                 val desc = resp.optString("description", "")
                 val files = resp.optJSONArray("files")
@@ -749,7 +747,7 @@ class SettingsFragment : Fragment() {
             .setPositiveButton(R.string.save) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) { httpPut("$BASE_URL/api/skills/$name", JSONObject().apply { put("skill_md", et.text.toString()) }) }
+                        withContext(Dispatchers.IO) { GatewayApi.updateSkill(name, et.text.toString()) }
                         snack(getString(R.string.settings_skill_updated, name))
                     } catch (_: Exception) { snack(getString(R.string.settings_save_failed, "")) }
                 }
@@ -764,7 +762,7 @@ class SettingsFragment : Fragment() {
             .setPositiveButton(R.string.delete_btn) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) { httpDelete("$BASE_URL/api/skills/$name") }
+                        withContext(Dispatchers.IO) { GatewayApi.deleteSkill(name) }
                         snack(getString(R.string.settings_skill_uninstalled, name)); retryLoad { loadSkills() }
                     } catch (_: Exception) { snack(getString(R.string.settings_save_failed, "")) }
                 }
@@ -799,11 +797,10 @@ class SettingsFragment : Fragment() {
                 if (url.isEmpty() && content.trim().isEmpty()) { snack(getString(R.string.settings_skill_empty_content)); return@setPositiveButton }
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        val body = JSONObject().apply {
-                            put("name", name)
-                            if (url.isNotEmpty()) put("url", url) else if (content.isNotEmpty()) put("skill_md", content)
+                        withContext(Dispatchers.IO) {
+                            if (url.isNotEmpty()) GatewayApi.installSkill(name, url = url)
+                            else GatewayApi.installSkill(name, content = content.takeIf { it.trim().isNotEmpty() })
                         }
-                        withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/skills/install", body) }
                         snack(getString(R.string.settings_skill_installed, name)); retryLoad { loadSkills() }
                     } catch (e: Exception) { snack(getString(R.string.settings_skill_install_failed, e.message ?: "")) }
                 }
@@ -835,9 +832,7 @@ class SettingsFragment : Fragment() {
     private fun saveMemoryMode(mode: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    httpPost("$BASE_URL/api/config", JSONObject().apply { put("memory_mode", mode) })
-                }
+                withContext(Dispatchers.IO) { GatewayApi.updateMemoryMode(mode) }
                 cachedMemoryMode = mode
                 val label = if (mode == "vector") getString(R.string.settings_memory_mode_vector) else getString(R.string.settings_memory_mode_basic)
                 tvMemoryModeSummary.text = label
@@ -853,7 +848,7 @@ class SettingsFragment : Fragment() {
     private fun showEmbeddingEditor() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val resp = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/embedding") }
+                val resp = withContext(Dispatchers.IO) { GatewayApi.getEmbeddingConfig() }
                 val providers = resp.optJSONObject("providers") ?: JSONObject()
                 val currentProvider = resp.optString("provider", "")
                 val names = providers.keys().asSequence().toList()
@@ -978,14 +973,11 @@ class SettingsFragment : Fragment() {
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         withContext(Dispatchers.IO) {
-                            httpPost("$BASE_URL/api/embedding/providers", JSONObject().apply {
-                                put("action", "add")
-                                put("name", name)
-                                put("base_url", url.ifEmpty { baseUrl })
-                                put("models", JSONArray(modelList))
-                            })
+                            GatewayApi.addEmbeddingProvider(name, url.ifEmpty { baseUrl }, modelList)
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        android.util.Log.w(TAG, "addEmbeddingProvider failed", e)
+                    }
                 }
                 saveEmbeddingConfig(name, model, key, url.ifEmpty { baseUrl })
             }
@@ -998,12 +990,11 @@ class SettingsFragment : Fragment() {
                         viewLifecycleOwner.lifecycleScope.launch {
                             try {
                                 withContext(Dispatchers.IO) {
-                                    httpPost("$BASE_URL/api/embedding/providers", JSONObject().apply {
-                                        put("action", "delete")
-                                        put("name", name)
-                                    })
+                                    GatewayApi.deleteEmbeddingProvider(name)
                                 }
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                android.util.Log.w(TAG, "deleteEmbeddingProvider failed", e)
+                            }
                         }
                         if (name == cachedEmbeddingProvider) deleteEmbeddingConfig()
                         else snack(getString(R.string.settings_provider_deleted, name))
@@ -1044,12 +1035,7 @@ class SettingsFragment : Fragment() {
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         withContext(Dispatchers.IO) {
-                            httpPost("$BASE_URL/api/embedding/providers", JSONObject().apply {
-                                put("action", "add")
-                                put("name", provider)
-                                put("base_url", baseUrl)
-                                put("models", JSONArray(listOf(model)))
-                            })
+                            GatewayApi.addEmbeddingProvider(provider, baseUrl, listOf(model))
                         }
                         snack("✅ $provider 已添加到列表")
                         showEmbeddingEditor()
@@ -1067,7 +1053,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    httpPost("$BASE_URL/api/embedding", JSONObject().apply {
+                    GatewayApi.saveEmbeddingConfig(JSONObject().apply {
                         put("provider", provider)
                         put("model", model)
                         put("api_key", apiKey)
@@ -1092,7 +1078,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    httpPost("$BASE_URL/api/embedding", JSONObject().apply {
+                    GatewayApi.saveEmbeddingConfig(JSONObject().apply {
                         put("provider", "")
                         put("model", "")
                         put("api_key", "")
@@ -1121,14 +1107,15 @@ class SettingsFragment : Fragment() {
         // 加载当前配置
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val cfg = withContext(Dispatchers.IO) { httpGet("$BASE_URL/api/config") }
-                val cfgObj = cfg.optJSONObject("config") ?: cfg
+                val cfgObj = withContext(Dispatchers.IO) { GatewayApi.getConfig() }
                 val tavilyObj = cfgObj.optJSONObject("tavily")
                 val currentKey = tavilyObj?.optString("api_key", "") ?: ""
                 if (currentKey.isNotEmpty()) {
                     input.setText(currentKey)
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "loadTavilyConfig failed", e)
+            }
 
             AlertDialog.Builder(requireContext())
                 .setTitle("🔍 ${getString(R.string.settings_tavily_api_key)}")
@@ -1149,12 +1136,7 @@ class SettingsFragment : Fragment() {
     private fun saveTavilyConfig(apiKey: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val body = JSONObject().apply {
-                    put("tavily", JSONObject().apply {
-                        put("api_key", apiKey)
-                    })
-                }
-                withContext(Dispatchers.IO) { httpPost("$BASE_URL/api/config", body) }
+                withContext(Dispatchers.IO) { GatewayApi.updateTavilyKey(apiKey) }
                 updateTavilySummary(apiKey)
                 snack(if (apiKey.isNotEmpty()) getString(R.string.settings_tavily_saved) else getString(R.string.settings_tavily_cleared))
             } catch (e: Exception) {
@@ -1214,9 +1196,7 @@ class SettingsFragment : Fragment() {
     private fun saveMaxSteps(steps: Int) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    httpPost("$BASE_URL/api/config", JSONObject().apply { put("max_agent_steps", steps) })
-                }
+                withContext(Dispatchers.IO) { GatewayApi.updateMaxSteps(steps) }
                 cachedMaxSteps = steps
                 tvMaxStepsSummary.text = getString(R.string.settings_max_steps_current, steps)
                 snack(getString(R.string.settings_max_steps_saved, steps))
@@ -1233,11 +1213,9 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val backupJson = withContext(Dispatchers.IO) {
-                    val conn = java.net.URL("$BASE_URL/api/backup").openConnection() as java.net.HttpURLConnection
-                    conn.requestMethod = "GET"; conn.connectTimeout = 30000; conn.readTimeout = 60000
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    conn.disconnect()
-                    body
+                    val apiKey = "" // Gateway doesn't require auth for local backup
+                    val inputStream: java.io.InputStream = GatewayApi.getBackup(apiKey)
+                    inputStream.bufferedReader().use { it.readText() }
                 }
 
                 val backup = JSONObject(backupJson)
@@ -1440,15 +1418,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    val conn = java.net.URL("$BASE_URL/api/backup/restore").openConnection() as java.net.HttpURLConnection
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.connectTimeout = 30000; conn.readTimeout = 120000
-                    conn.doOutput = true
-                    conn.outputStream.use { it.write(backupJson.toByteArray()) }
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    conn.disconnect()
-                    JSONObject(body)
+                    GatewayApi.restoreBackup(apiKey = "", jsonContent = backupJson)
                 }
 
                 val restored = result.optInt("files_restored", 0)
@@ -1507,53 +1477,4 @@ class SettingsFragment : Fragment() {
     // (settings handler)
 
     private fun snack(msg: String) { view?.let { Snackbar.make(it, msg, Snackbar.LENGTH_SHORT).show() } }
-
-    private fun httpGet(urlStr: String): JSONObject {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "GET"; conn.connectTimeout = 10000; conn.readTimeout = 10000
-        val code = conn.responseCode
-        val body = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code")
-        return JSONObject(body)
-    }
-
-    private fun httpPost(urlStr: String, jsonBody: JSONObject): JSONObject {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.connectTimeout = 10000; conn.readTimeout = 10000; conn.doOutput = true
-        OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(jsonBody.toString()); it.flush() }
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val body = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $body")
-        return JSONObject(body)
-    }
-
-    private fun httpPut(urlStr: String, jsonBody: JSONObject): JSONObject {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "PUT"
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        conn.connectTimeout = 10000; conn.readTimeout = 10000; conn.doOutput = true
-        OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(jsonBody.toString()); it.flush() }
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val body = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $body")
-        return JSONObject(body)
-    }
-
-    private fun httpDelete(urlStr: String): JSONObject {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "DELETE"; conn.connectTimeout = 10000; conn.readTimeout = 10000
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val body = BufferedReader(InputStreamReader(stream, "UTF-8")).use { it.readText() }
-        conn.disconnect()
-        if (code !in 200..299) throw Exception("HTTP $code: $body")
-        return JSONObject(body)
-    }
 }

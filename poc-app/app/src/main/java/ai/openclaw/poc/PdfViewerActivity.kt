@@ -70,7 +70,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
             val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             pdfRenderer = PdfRenderer(fileDescriptor)
-            pageCount = pdfRenderer!!.pageCount
+            val renderer = pdfRenderer ?: return
+            pageCount = renderer.pageCount
             showPage(0)
         } catch (e: Exception) {
             Toast.makeText(this, "PDF 打开失败: ${e.message}", Toast.LENGTH_LONG).show()
@@ -79,14 +80,14 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun showPage(index: Int) {
-        if (pdfRenderer == null) return
+        val renderer = pdfRenderer ?: return
         if (index < 0 || index >= pageCount) return
 
         currentPage?.close()
-        currentPage = pdfRenderer!!.openPage(index)
+        currentPage = renderer.openPage(index)
         pageIndex = index
 
-        val page = currentPage!!
+        val page = currentPage ?: return
         val width = (page.width * scaleFactor).toInt()
         val height = (page.height * scaleFactor).toInt()
 

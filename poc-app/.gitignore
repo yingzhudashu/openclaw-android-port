@@ -102,3 +102,7 @@ temp/
 release/
 *.keystore
 *.jks
+
+# Local test / temp scripts
+test_v*.ps1
+TEST_REPORT*.md

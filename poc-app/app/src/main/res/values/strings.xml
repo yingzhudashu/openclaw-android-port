@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OpenClaw</string>
 
@@ -361,4 +361,5 @@
     <string name="settings_tavily_summary">配置 Tavily AI 搜索服务</string>
     <string name="settings_tavily_saved">Tavily API Key 已保存</string>
     <string name="settings_tavily_cleared">Tavily API Key 已清除</string>
+    <string name="chat_no_session">请先创建会话</string>
 </resources>

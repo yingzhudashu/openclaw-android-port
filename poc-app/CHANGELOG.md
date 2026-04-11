@@ -7,6 +7,30 @@
 
 ---
 
+## [1.5.0] - 2026-04-11
+
+**APK 体积减半 + Release 构建优化。**
+
+本版本将 Release APK 体积从 33.9 MB 降至 17.68 MB（↓48%），通过 Release 构建仅打包 `arm64-v8a` 架构实现，同时保留 Debug 构建的 `x86_64` 支持以供模拟器开发使用。首次启用 R8 代码混淆与资源压缩。
+
+### 优化
+
+#### APK 体积优化
+- **Release 构建仅打包 `arm64-v8a`**：现代真机仅需 arm64，移除 release 中的 `x86_64` 架构，APK 减少约 16 MB
+- **Debug 构建保留双架构**：`arm64-v8a` + `x86_64`，确保 Android 模拟器开发调试不受影响
+- **R8 混淆 + 资源压缩生效**：`isMinifyEnabled = true` + `isShrinkResources = true` 在 release 构建中正确启用
+- Release APK 从 33.9 MB 降至 **17.68 MB**，比 v1.4.0（23 MB，未开 R8）还小 5 MB
+
+### 改动
+- `build.gradle.kts`：`defaultConfig.ndk.abiFilters` 默认仅 `arm64-v8a`；`debug` buildType 中单独追加 `x86_64`
+- `versionCode`：6 → 7
+
+### 统计数据
+- 修改 1 个文件（`build.gradle.kts`）
+- Release APK：33.9 MB → **17.68 MB**（↓48%）
+
+---
+
 ## [1.4.0] - 2026-04-10
 
 **语音朗读 + 全屏图片查看器 + PDF 查看器。**

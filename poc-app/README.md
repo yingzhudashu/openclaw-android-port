@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.4.0-green.svg" alt="Version: 1.4.0"></a>
+  <a href="https://github.com/yingzhudashu/openclaw-android-port/releases"><img src="https://img.shields.io/badge/version-1.5.0-green.svg" alt="Version: 1.5.0"></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-2.0-purple.svg" alt="Kotlin"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-embedded-brightgreen.svg" alt="Node.js embedded"></a>
 </p>
@@ -274,7 +274,7 @@ adb install app\build\outputs\apk\debug\app-debug.apk
 | 决策 | 原因 |
 |------|------|
 | XML Layout（非 Compose） | 减少依赖，更简单直接 |
-| arm64-v8a only | 匹配目标硬件，减小 APK 体积 |
+| release: arm64-v8a only / debug: +x86_64 | Release 减体积，Debug 保留模拟器支持 |
 | useLegacyPackaging = true | .so 不压缩，可直接加载 |
 | Process-based Node.js | 非 JNI 嵌入，进程隔离更稳定 |
 | 纯内置模块（零依赖） | 无外部 npm 包，避免兼容性问题 |
@@ -356,12 +356,14 @@ App 内置 Comprehensive Test 套件：
 - [x] 语音朗读（TTS）
 - [x] 全屏图片查看器（双指缩放）
 - [x] PDF 查看器
+- [x] Release 构建（R8 混淆 + 签名 + 资源压缩）
+- [x] APK 体积优化（release: 仅 arm64-v8a，17.68 MB）
+- [x] Debug 双架构（+x86_64，模拟器开发）
 
 ### 规划中
-- [ ] Release 构建（R8 混淆 + 签名）
-- [ ] x86_64 架构支持（模拟器）
 - [ ] 消息加密传输
 - [ ] F-Droid 上架
+- [ ] 动态 feature module（按需下载 .so）
 
 ---
 
